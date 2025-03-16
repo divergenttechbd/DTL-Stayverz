@@ -1,0 +1,17 @@
+ADMIN_STAFF_FIELD_LIST = [
+    "id",
+    "full_name",
+    "email",
+    "phone_number",
+    "date_joined",
+    "u_type",
+    "status",
+    "is_staff",
+    "is_superuser",
+    "role",
+    "username",
+    "is_active",
+    "first_name",
+    "last_name",
+    "wishlist_listings",
+]

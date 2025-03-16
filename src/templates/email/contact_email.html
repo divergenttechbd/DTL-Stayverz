@@ -1,0 +1,39 @@
+<!-- contact_email.html -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contact Us Email</title>
+    <style>
+        /* Add your CSS styles here */
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            color: #333;
+            padding: 20px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #007bff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Contact Us Message</h1>
+        <p><strong>Name:</strong> {{ first_name }} {{ last_name }}</p>
+        <p><strong>Email:</strong> {{ email }}</p>
+        <p><strong>Message:</strong> {{ text }}</p>
+        <p><strong>Phone Number:</strong> {{ phone_number }}</p>
+    </div>
+</body>
+</html>

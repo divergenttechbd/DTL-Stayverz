@@ -1,0 +1,104 @@
+version: "3"
+
+services:
+  db:
+    image: postgres:latest
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=mahmudul
+      - POSTGRES_PASSWORD=152155809
+      - POSTGRES_DB=django_starter
+      - POSTGRES_HOST=localhost
+    ports:
+      - 5433:5432
+    networks:
+      - app-network
+    
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - app-network
+
+  worker:
+    build: .
+    depends_on:
+      - redis
+      - db
+    volumes:
+      - ./src:/app/src
+      - static_volume:/app/src/static
+      - media_volume:/app/src/media
+    env_file:
+      - .env
+    command: bash -c "cd /app/src && celery -A myproject.settings.celery worker -l info"
+    networks:
+      - app-network
+    
+
+  flower:
+    image: mher/flower
+    command: celery --broker=redis://redis:6379/0 flower --port=5555
+    ports:
+      - 5556:5555
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/
+    depends_on:
+      - worker
+    volumes:
+      - flower_data:/flower_data
+    networks:
+      - app-network
+    
+  app:
+    container_name: django
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      - db
+      - redis
+    volumes:
+      - ./src:/app/src
+    command: bash -c "cd /app/src && gunicorn myproject.wsgi:application --bind 0.0.0.0:8000"
+    ports:
+      - 8000:8000
+    networks:
+      - app-network
+    env_file:
+      - .env
+  
+
+  nginx:
+    container_name: nginx
+    image: nginx:mainline-alpine
+    restart: always
+    ports:
+      - 80:80
+    volumes:
+      - ./nginx:/etc/nginx/conf.d
+      - static_volume:/app/src/static
+      - media_volume:/app/src/media
+    depends_on:
+      - app
+    networks:
+      - app-network
+
+
+volumes:
+  pgdata:
+  redis_data:
+  flower_data:
+  static_volume:
+  media_volume:
+
+
+networks:
+  app-network:
+    driver: bridge

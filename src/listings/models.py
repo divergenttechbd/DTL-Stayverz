@@ -1,0 +1,132 @@
+from django.db import models
+from django.contrib.gis.db.models import PointField
+from django.contrib.gis.geos import Point
+from django.contrib.auth import get_user_model
+from base.models import BaseModel
+from base.type_choices import (
+    AmenityTypeOption,
+    ListingStatusOption,
+    ListingVerificationStatusOption,
+    PlaceTypeOption,
+)
+from configurations.data import default_cancellation_policy
+
+# Create your models here.
+User = get_user_model()
+
+
+class Category(BaseModel):
+    name = models.CharField(max_length=200)
+    icon = models.CharField(max_length=255)
+
+    class Meta:
+        verbose_name = "Listing Category"
+        verbose_name_plural = "1. Listing Category"
+
+    def __str__(self):
+        return self.name
+
+
+class Amenity(BaseModel):
+    name = models.CharField(max_length=200)
+    a_type = models.CharField(max_length=20, choices=AmenityTypeOption.choices)
+    icon = models.CharField(max_length=255)
+
+    class Meta:
+        verbose_name = "Listing Amenity"
+        verbose_name_plural = "2. Listing Amenities"
+
+    def __str__(self):
+        return self.name
+
+
+class Listing(BaseModel):
+    unique_id = models.UUIDField(unique=True)
+    host = models.ForeignKey(User, on_delete=models.PROTECT)
+    category = models.ForeignKey(
+        "listings.Category", on_delete=models.PROTECT, null=True
+    )
+    title = models.CharField(max_length=200)
+    description = models.TextField(blank=True)
+    price = models.FloatField(default=0)
+    cover_photo = models.URLField(blank=True)
+    images = models.JSONField(default=list)
+    place_type = models.CharField(
+        max_length=20, choices=PlaceTypeOption.choices, blank=True
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=ListingStatusOption.choices,
+        default=ListingStatusOption.IN_PROGRESS,
+    )
+    verification_status = models.CharField(
+        max_length=20,
+        choices=ListingVerificationStatusOption.choices,
+        default=ListingVerificationStatusOption.UNVERIFIED,
+    )
+    guest_count = models.PositiveIntegerField(default=0)
+    bedroom_count = models.PositiveIntegerField(default=0)
+    bed_count = models.PositiveIntegerField(default=0)
+    bathroom_count = models.PositiveIntegerField(default=0)
+    minimum_nights = models.PositiveIntegerField(default=1)
+    maximum_nights = models.PositiveIntegerField(default=30)
+    address = models.CharField(max_length=200, blank=True)
+    pet_allowed = models.BooleanField(default=False)
+    event_allowed = models.BooleanField(default=False)
+    smoking_allowed = models.BooleanField(default=False)
+    media_allowed = models.BooleanField(default=False)
+    unmarried_couples_allowed = models.BooleanField(default=False)
+    cancellation_policy = models.JSONField(default=default_cancellation_policy)
+    check_in = models.TimeField(default="12:00")
+    check_out = models.TimeField(default="11:00")
+    avg_rating = models.FloatField(default=0)
+    total_rating_sum = models.FloatField(default=0)
+    total_rating_count = models.PositiveIntegerField(default=0)
+    total_booking_count = models.PositiveIntegerField(default=0)
+    location = PointField(default=Point(0, 0))
+
+    class Meta:
+        verbose_name = "Listing"
+        verbose_name_plural = "3. Listing"
+
+    @property
+    def latitude(self) -> float:
+        return self.location.x
+
+    @property
+    def longitude(self) -> float:
+        return self.location.y
+
+    def __str__(self):
+        return self.title
+
+
+class ListingAmenity(BaseModel):
+    listing = models.ForeignKey("listings.Listing", on_delete=models.PROTECT)
+    amenity = models.ForeignKey("listings.Amenity", on_delete=models.PROTECT)
+
+    class Meta:
+        verbose_name = "Listing Amenity"
+        verbose_name_plural = "4. Listing Amenity"
+
+    def __str__(self):
+        return str(self.pk)
+
+
+class ListingCalendar(BaseModel):
+    listing = models.ForeignKey("listings.Listing", on_delete=models.PROTECT)
+    base_price = models.FloatField()
+    custom_price = models.FloatField()
+    start_date = models.DateField()
+    end_date = models.DateField(null=True, blank=True)
+    is_blocked = models.BooleanField(default=False)
+    is_booked = models.BooleanField(default=False)
+    note = models.TextField(blank=True)
+    booking_data = models.JSONField(default=dict)
+
+    class Meta:
+        verbose_name = "Listing Calendar"
+        verbose_name_plural = "5. Listing Calendar"
+
+    def __str__(self):
+        return str(self.pk)

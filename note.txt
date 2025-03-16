@@ -1,0 +1,344 @@
+Host 
+    1. Sign up (direct login after sign up)
+    2. Sign in
+    3. otp 
+    4. attempted sign up log 
+    5. profile get/update 
+    6. email verify
+    7. image update
+    8. identity  verify (only one approved ). 
+    9. forget password 
+    10. create listing -> 10 step 
+        image cover photo
+
+
+Guest 
+    1. Sign up (direct login after sign up)
+    2. Sign in
+    3. otp 
+    4. attempted sign up log 
+    5. profile get/update 
+    6. email verify
+
+
+
+
+users 
+    username 
+    email 
+    phone_number 
+    type (host, guest, system)
+    password 
+    role (super_admin, admin etc ) -> ENUM 
+    status () -> ENUM ()
+    verifications field 
+    etc 
+
+
+user_attempt 
+    id
+    ......
+
+user_profile 
+    user -> fk 
+    bio 
+    address 
+    ... 
+
+
+
+listing_categories 
+    id 
+    name 
+
+
+
+amenities
+    type -> ENUM 
+    name -> text 
+
+
+listings 
+    id
+    list_cat -> fk 
+    place_types -> ENUM (...)
+    location ->  
+    lat -> 
+    lon -> 
+    bed_count -> 
+    ... count 
+    images -> josn /Array
+    title 
+    description 
+    price 
+
+
+
+listing_amenities 
+    listing -> fk 
+    amenitie -> fk 
+    .....
+
+
+[
+    "email": "thui"
+]
+
+["user already exists"]
+
+
+1. in register it should is_phone_verified true
+
+
+1. first empty listing create  -> Done
+2. multiple image upload api 
+3. listing-configurations api -> categories, amenities,  enum etc 
+
+
+Listing 
+    price  -> 20
+
+
+| Listing ID | Start Date | End Date   | Default Price | Custom Price |
+|------------|------------|------------|---------------|--------------|
+| 1          | 2024-01-01 | 2024-12-31 | $20           |              |
+| 1          | 2024-06-01 | 2024-03-05 | $20           | $15          |
+| 2          | ...        | ...        | ...           |              |
+
+
+
+
+Listing 
+    1 -> 50 -> 15-09-2023
+
+
+ListingCalendar 
+    1  15-09-2023  null 50 -> 
+
+
+    1  18-09-2023  20-09-2023 40 -> 
+
+    1 
+    
+
+
+1. only base price filter.
+2. first obj calender end date will null.
+3. base price update will affect from current date in calendar.
+4. single update/insert in calendar.
+
+
+
+Listing 
+    create 
+        1
+        30 
+        15-09-2023
+
+    update/1
+        1
+        35
+        15-10-2023
+
+
+
+
+15-09-2023 -> 14-10-2023 -> 30 
+15-10-203  
+
+
+15-10-2023
+
+
+2023-09-15 -> 2023-09-30 
+
+
+
+current 
+2023-09-15 -> 2023-09-16 -> 30 
+2023-09-17 -> 2023-09-22 -> 25
+2023-09-23 -> 2023-09-30 -> 30
+
+
+2023-09-15 -> 2023-09-15 -> 30
+2023-09-16 -> 2023-09-20 -> 200
+2023-09-21 -> 2023-09-22 -> 25
+2023-09-23 -> 2023-09-30 -> 30
+
+
+
+
+2023-09-15 -> 2023-09-15 -> 30 -> done
+2023-09-16 -> 2023-09-20 -> 200 -> done
+2023-09-21 -> 2023-09-21 -> 25 -> done
+2023-09-22 -> 2023-09-25 -> 300 -> done
+2023-09-26 -> 2023-09-30 -> 30 -> done
+
+
+2023-09-15 -> 2023-09-15 -> 30 -> done
+2023-09-16 -> 2023-09-20 -> 200 -> done
+2023-09-21 -> 2023-09-21 -> 25 -> done
+2023-09-22 -> 2023-09-22 -> 300 -> done
+2023-09-23 -> 2023-09-25 -> 500 -> done
+2023-09-26 -> 2023-09-30 -> 30 -> done
+
+
+
+
+{
+    "start_date": "2023-9-16",
+    "end_date": "2023-09-20",
+    "price": 25,
+    "minimum_nights": 1,
+    "maximum_nights": 2
+}
+
+existing_ranges = cls.objects.filter(
+    listing_id=listing_id,
+    start_date__lte=new_end_date,
+    end_date__gte=new_start_date,
+)
+
+
+for existing_range in existing_ranges:
+     
+
+    if existing_range.end_date > new_end_date:
+        cls.objects.create(
+        #             listing_id=listing_id,
+        #             start_date=new_end_date + timedelta(days=1),
+        #             end_date=existing_range.end_date,  
+        #             custom_price=existing_range.custom_price,
+        #             base_price=base_price,
+        #         )
+
+    if existing_range.start_date < new_start_date:
+        existing_range.end_date = new_start_date - timedelta(days=1)
+
+
+2023-09-15 -> 2023-09-15 -> 30
+2023-09-16 -> 2023-09-20 -> 200
+2023-09-21 -> 2023-09-22 -> 25
+2023-09-23 -> 2023-09-30 -> 30
+
+
+
+1-null => 10
+2-16 => 15
+14-20 => 30
+20-25 => 40
+16-null => 25
+
+arr[] = {
+  from:
+  to:
+  price:
+  created_at: 
+}
+
+{
+  1: 10,
+  2: 15,
+  ...
+  14: 30,
+  ...
+}
+
+
+auth AuthMiddleware
+1. delta 
+2. prime rantal 
+3. legal crm 
+4. instant 
+5. starter 
+
+
+
+listing detail with date range 
+    1. all ok (no blocked)
+    2. 30 - 1 -> 1 night , min_nights, max_nights 2 
+
+
+
+    """
+            l1 = price != null 
+            l2 = is_blocked != null
+            l3 = is_booked == true
+
+            l1 + l2 
+
+        """
+
+        formatted_data[date_str] = {
+                        "id": listing_calendar_id,
+                        "price": l1,
+                        "is_blocked": l2,
+                         "is_booked": l2,
+                    }
+
+
+
+base price 500 
+guest_service_fee 100
+total_price 600
+
+
+host pay out  -> 500 - 50(host service fee) = 450
+
+
+
+review 
+    1. guest can add review to listing if  completed -> checkout date must be over 
+    2. one review per booking 
+    3. if gust review submitted then host can only view the guest review if he/she put a review  -> vise versa 
+    4. host/guest review 
+        1. total count 
+        2. all listing view sum / total count 
+
+
+
+listing 
+    .... 
+    host_review_done 
+    guest_review_done
+    total 
+    avg 
+
+
+User 
+    total_review_count 
+    avg_review
+
+
+listing review
+    listing 
+    is_host 
+    is_guest 
+    rating 
+    review
+
+
+
+
+****************************************************** 
+
+1. booking status change 
+2. service charge api for host and guest 
+3. booking calendar issue extra 1 day count issue 
+4. cancellation 
+
+
+ 1500 -> 
+ 20 
+ 1520 
+
+
+refund 
+    750 
+
+
+
+
+cancell 
+    1000000 -> 
+        
