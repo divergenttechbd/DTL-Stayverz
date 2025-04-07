@@ -1,3 +1,4 @@
+import accounts
 from accounts.views.admin import (
     AdminStaffListCreateApiView,
     AdminUserListApiView,
@@ -12,6 +13,7 @@ from django.urls import path
 app_name = "admin"
 
 urlpatterns = [
+    path('dtl/<int:pk>', accounts.views.admin.UserDTLetail),
     path(
         "staffs/",
         AdminStaffListCreateApiView.as_view(),

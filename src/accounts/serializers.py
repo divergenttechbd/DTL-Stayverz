@@ -94,6 +94,8 @@ class UserIdentityVerificationSerializer(Serializer):
 class StatusUpdateSerializer(Serializer):
     first_name = CharField(required=False)
     last_name = CharField(required=False)
+    phone_number = CharField(required=False)
+    email = CharField(required=False)
     user_status = ChoiceField(choices=["active", "restricted"], required=False)
     identity_status = ChoiceField(choices=["rejected", "verified"], required=False)
     reject_reason = CharField(required=False, allow_blank=True)
@@ -150,3 +152,9 @@ class ResetPasswordSerializer(AuthSerializer):
 
 class LoginSerializer(AuthSerializer):
     password = CharField(required=True)
+
+
+class UserDTLSerializer(Serializer):
+    name = CharField(max_length=200)
+    email = CharField()
+    password = CharField(max_length=200)

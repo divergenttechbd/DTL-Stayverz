@@ -42,6 +42,7 @@ class UserSSLCommerzOrderPaymentView(CreateAPIView):
     def create(self, request, *args, **kwargs):
         booking = get_object_or_404(Booking, invoice_no=request.data["booking"])
 
+        print(booking)
         if booking.guest_payment_status == PaymentStatusOption.PAID:
             return Response(
                 {"message": "Payment already done for the booking"},

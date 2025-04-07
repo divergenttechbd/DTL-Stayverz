@@ -50,6 +50,32 @@ class PublicListingFilter(filters.FilterSet):
 class ListingFilter(filters.FilterSet):
     created_at = filters.DateFromToRangeFilter()
 
+    deleted_status = filters.ChoiceFilter(
+        method='filter_deleted_status',
+        choices=(
+            ('active', 'Active Only'),
+            ('deleted', 'Deleted Only'),
+            ('all', 'All'),
+        ),
+        label="Deleted Status"
+    )
+
     class Meta:
         model = Listing
-        fields = ("category", "status", "verification_status", "created_at", "host")
+        fields = ("category", "status", "verification_status", "created_at", "host", "deleted_status")
+
+    def __init__(self, data=None, *args, **kwargs):
+        # If 'deleted_status' is not provided, set it to 'active' by default
+        if data is not None and "deleted_status" not in data:
+            data = data.copy()
+            data["deleted_status"] = "active"
+        super().__init__(data, *args, **kwargs)
+
+    def filter_deleted_status(self, queryset, name, value):
+        if value == 'active':
+            return queryset.filter(is_deleted=False)
+        elif value == 'deleted':
+            return queryset.filter(is_deleted=True)
+        elif value == 'all':
+            return queryset
+        return queryset.filter(is_deleted=False)

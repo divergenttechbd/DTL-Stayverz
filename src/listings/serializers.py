@@ -74,3 +74,4 @@ class ListingStatusUpdateSerializer(Serializer):
             )
 
         return data
+

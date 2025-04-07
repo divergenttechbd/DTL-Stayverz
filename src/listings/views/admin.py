@@ -1,3 +1,5 @@
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.filters import OrderingFilter
 from rest_framework.generics import ListAPIView, RetrieveUpdateAPIView, views
 from rest_framework import status
 from rest_framework.response import Response
@@ -29,21 +31,32 @@ class AdminListingListAPIView(ListAPIView):
     serializer_class = ListingSerializer
     http_method_names = ["get", "post"]
     filterset_class = ListingFilter
+    filter_backends = [DjangoFilterBackend, OrderingFilter]
     swagger_tags = ["Admin Listings"]
     ordering_fields = ["created_at", "-created_at", "avg_rating", "-avg_rating"]
 
     def get_queryset(self):
-        qs = Listing.objects.filter().select_related("category", "host")
+        base_queryset = Listing.all_objects.select_related("category", "host")
+
+        # Apply filterset manually to support custom filtering and deleted_status
+        filterset = self.filterset_class(self.request.GET, queryset=base_queryset, request=self.request)
+        if filterset.is_valid():
+            filtered_qs = filterset.qs
+        else:
+            filtered_qs = base_queryset
+
+        # Apply custom sort_by from query param
         sort_by = self.request.query_params.get("sort_by")
         if sort_by == "oldest":
-            qs = qs.order_by("created_at")
+            filtered_qs = filtered_qs.order_by("created_at")
         elif sort_by == "newest":
-            qs = qs.order_by("-created_at")
+            filtered_qs = filtered_qs.order_by("-created_at")
         elif sort_by == "popular":
-            qs = qs.order_by("-avg_rating")
+            filtered_qs = filtered_qs.order_by("-avg_rating")
         else:
-            qs = qs.order_by("-created_at")
-        return qs
+            filtered_qs = filtered_qs.order_by("-created_at")
+
+        return filtered_qs
 
     def get_serializer(self, *args, **kwargs):
         kwargs["context"] = self.get_serializer_context()
@@ -57,6 +70,13 @@ class AdminListingLitListAPIView(ListAPIView):
     queryset = Listing.objects.filter().only("id", "cover_photo", "title")
     search_fields = ("title",)
     swagger_tags = ["Admin Listings"]
+
+    def get_queryset(self):
+        show_deleted = self.request.query_params.get("show_deleted", "").lower() == "true"
+        if show_deleted:
+            return Listing.all_objects.filter().only("id", "cover_photo", "title")
+        return Listing.objects.filter().only("id", "cover_photo", "title")
+
 
     def get_serializer(self, *args, **kwargs):
         kwargs["context"] = self.get_serializer_context()
@@ -74,13 +94,23 @@ class AdminListingLitListAPIView(ListAPIView):
 
 class AdminListingRetrieveUpdateAPIView(RetrieveUpdateAPIView):
     permission_classes = (IsStaff,)
-    queryset = (
-        Listing.objects.filter()
-        .prefetch_related("listingamenity_set__amenity")
-        .select_related("category", "host")
-    )
     serializer_class = ListingSerializer
     swagger_tags = ["Admin Listings"]
+
+    def get_queryset(self):
+        # Check if we should include deleted items when retrieving an object
+        include_deleted = self.request.query_params.get("include_deleted", "").lower() == "true"
+        if include_deleted:
+            return (
+                Listing.all_objects.filter()
+                .prefetch_related("listingamenity_set__amenity")
+                .select_related("category", "host")
+            )
+        return (
+            Listing.objects.filter()
+            .prefetch_related("listingamenity_set__amenity")
+            .select_related("category", "host")
+        )
 
     def get_serializer(self, *args, **kwargs):
         kwargs["context"] = self.get_serializer_context()
@@ -116,4 +146,56 @@ class AdminListingRetrieveUpdateAPIView(RetrieveUpdateAPIView):
             instance.save()
             return Response(
                 {"message": "Status updated successfully."}, status=status.HTTP_200_OK
+            )
+
+    def delete(self, request, *args, **kwargs):
+        instance = self.get_object()
+        instance.delete()  # This calls the soft delete method
+        return Response(
+            {"message": "Listing has been soft deleted."},
+            status=status.HTTP_200_OK
+        )
+
+
+class AdminListingRestoreAPIView(views.APIView):
+    permission_classes = (IsStaff,)
+    swagger_tags = ["Admin Listings"]
+
+    def post(self, request, pk, *args, **kwargs):
+        try:
+            # Must use all_objects manager to find deleted listings
+            instance = Listing.all_objects.get(pk=pk)
+            if not instance.is_deleted:
+                return Response(
+                    {"message": "This listing is not deleted."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            instance.restore()
+            return Response(
+                {"message": "Listing has been restored successfully."},
+                status=status.HTTP_200_OK
+            )
+        except Listing.DoesNotExist:
+            return Response(
+                {"message": "Listing not found."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+
+class AdminListingHardDeleteAPIView(views.APIView):
+    permission_classes = (IsSuperUser,)  # Restrict to superusers only
+    swagger_tags = ["Admin Listings"]
+
+    def delete(self, request, pk, *args, **kwargs):
+        try:
+            instance = Listing.all_objects.get(pk=pk)
+            instance.hard_delete()
+            return Response(
+                {"message": "Listing has been permanently deleted."},
+                status=status.HTTP_200_OK
+            )
+        except Listing.DoesNotExist:
+            return Response(
+                {"message": "Listing not found."},
+                status=status.HTTP_404_NOT_FOUND
             )

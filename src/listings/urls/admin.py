@@ -4,7 +4,7 @@ from listings.views.admin import (
     AdminListingListAPIView,
     AdminListingCategoryListApiView,
     AdminListingRetrieveUpdateAPIView,
-    AdminListingLitListAPIView,
+    AdminListingLitListAPIView, AdminListingRestoreAPIView, AdminListingHardDeleteAPIView,
 )
 
 app_name = "admin"
@@ -30,4 +30,7 @@ urlpatterns = [
         AdminListingLitListAPIView.as_view(),
         name="listing_lite_get",
     ),
+
+    path('listings/<int:pk>/restore/', AdminListingRestoreAPIView.as_view(), name='admin-listing-restore'),
+    path('listings/<int:pk>/hard-delete/', AdminListingHardDeleteAPIView.as_view(), name='admin-listing-hard-delete'),
 ]

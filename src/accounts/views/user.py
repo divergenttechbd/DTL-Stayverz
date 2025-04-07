@@ -1,5 +1,6 @@
 from bson import ObjectId
 from django.conf import settings
+from drf_yasg.utils import swagger_auto_schema
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.request import Request
 from rest_framework.generics import ListAPIView
@@ -109,9 +110,13 @@ class UserProfileRetrieveUpdateAPIView(APIView):
             user_data["unread_message_count"] = total_unread_msg_count
         return Response(data=user_data, status=status.HTTP_200_OK)
 
+    @swagger_auto_schema(request_body=UserProfileSerializer)
     @method_decorator(exception_handler)
     def patch(self, request, *args, **kwargs):
-        instance = self.request.user.userprofile
+        print(" --------------- ")
+        print(self.request.user)
+        instance = self.request.user
+        print(instance)
         serializer = UserProfileSerializer(
             instance=instance,
             data=request.data,
@@ -182,9 +187,11 @@ class UserUnreadMessageCountAPIView(APIView):
 
 class UserIdentityVerificationAPIView(APIView):
     permission_classes = (IsAuthenticated,)
-    http_method_names = ["get", "post"]
+    http_method_names = ["post"]
     swagger_tags = ["User Profile"]
 
+
+    @swagger_auto_schema(request_body=UserIdentityVerificationSerializer, tags=['User Profile'])
     @method_decorator(exception_handler)
     def post(self, request, *args, **kwargs):
         user = request.user

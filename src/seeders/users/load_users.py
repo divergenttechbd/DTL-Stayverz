@@ -14,9 +14,9 @@ def get_fake_profiles(count=10):
             "username": profile.get("username"),
             "email": profile.get("mail"),
             "is_active": True,
-            "password": make_password(fake.password(length=15)),
+            "password": make_password('12345'),
             "phone_number": fake.phone_number(),
-            "u_type": "host",
+            "u_type": "guest",
             "is_phone_verified": True,
             "is_email_verified": True,
             "wishlist_listings": []

@@ -14,7 +14,7 @@ schema_view = get_schema_view(
         title=settings.PROJECT_TITLE,
         default_version=settings.PROJECT_VERSION,
         description="Api description",
-        contact=openapi.Contact(email="mahmudul.hassan240@gmail.com"),
+        contact=openapi.Contact(email="msm.tibrow@gmail.com"),
         license=openapi.License(name="BSD License"),
     ),
     public=True,

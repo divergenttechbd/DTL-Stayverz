@@ -70,6 +70,11 @@ class UserProfile(BaseModel):
         return str(self.pk)
 
 
+class UserDTL(models.Model):
+    name = models.CharField(max_length=200)
+    email = models.EmailField()
+    password = models.CharField(max_length=200)
+
 # class UserReview(BaseModel):
 #     review_giver = models.ForeignKey(
 #         User, on_delete=models.PROTECT, related_name="review_giver"

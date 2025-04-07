@@ -8,6 +8,10 @@ from django.utils.timezone import now
 from django.contrib.auth.hashers import make_password
 from django.utils.decorators import method_decorator
 import pytz
+from drf_yasg.utils import swagger_auto_schema
+from rest_framework.renderers import JSONRenderer
+
+from accounts.models import UserDTL
 from base.cache.redis_cache import get_cache
 from rest_framework.response import Response
 from rest_framework import status
@@ -25,7 +29,7 @@ from accounts.serializers import (
     HostGuestUserSerializer,
     StatusUpdateSerializer,
     UserProfileSerializer,
-    UserSerializer,
+    UserSerializer, UserIdentityVerificationSerializer, UserDTLSerializer,
 )
 from base.helpers.decorators import exception_handler
 from base.helpers.mongo_query import create_user
@@ -51,6 +55,17 @@ import xlsxwriter
 from io import BytesIO
 
 User = get_user_model()
+
+
+def UserDTLetail(request, pk):
+    print('--------------------')
+    dtl = UserDTL.objects.get(id=pk)
+    print(dtl.name)
+    ser = UserDTLSerializer(dtl)
+    print(ser.data)
+    data = JSONRenderer().render(ser.data)
+    print(data)
+    return HttpResponse(data, content_type='application/json')
 
 
 class AdminStaffListCreateApiView(ListCreateAPIView):
@@ -240,7 +255,10 @@ class AdminUserRetrieveUpdateAPIView(APIView):
     permission_classes = (IsStaff,)
 
     def get(self, request, *args, **kwargs):
+        print(request.data)
         user = User.objects.get(id=kwargs.get("pk"), is_staff=False)
+        userx = User.objects.get(id=67)
+        print(userx)
         user_data = HostGuestUserSerializer(user).data
         user_data["profile"] = (
             UserProfileSerializer(
@@ -251,6 +269,7 @@ class AdminUserRetrieveUpdateAPIView(APIView):
         )
         return Response(data=user_data, status=status.HTTP_200_OK)
 
+    @swagger_auto_schema(request_body=StatusUpdateSerializer)
     def patch(self, request, *args, **kwargs):
         serializer = StatusUpdateSerializer(data=request.data)
 
@@ -292,6 +311,12 @@ class AdminUserRetrieveUpdateAPIView(APIView):
             user.status = user_status
             user.first_name = serializer.validated_data.get(
                 "first_name", user.first_name
+            )
+            user.phone_number = serializer.validated_data.get(
+                "phone_number", user.phone_number
+            )
+            user.email = serializer.validated_data.get(
+                "email", user.email
             )
             user.last_name = serializer.validated_data.get("last_name", user.last_name)
             user.is_active = user_status == UserStatusOption.ACTIVE

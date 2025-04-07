@@ -20,12 +20,11 @@ DATA_UPLOAD_MAX_MEMORY_SIZE = 20971520
 print("DB_PORT:", os.environ.get("DB_PORT"))
 print("DB_NAME:", os.environ.get("DB_NAME"))
 # DATABASE ENV
-DB_NAME = os.environ.get("DB_NAME")
-DB_USER = os.environ.get("DB_USER")
-DB_PASS = os.environ.get("DB_PASSWORD")
-DB_HOST = os.environ.get("DB_HOST")
-DB_PORT = int(os.environ.get("DB_PORT"))
-
+DB_HOST = os.getenv("DB_HOST", "localhost")
+DB_NAME = os.getenv("DB_NAME", "drf")
+DB_USER = os.getenv("DB_USER", "rootuser")
+DB_PASS = os.getenv("DB_PASSWORD", "P@s$4ad3s23")
+DB_PORT = os.getenv("DB_PORT", "5432")
 
 # REDIS & CELERY ENV
 REDIS_HOST = os.environ.get("REDIS_HOST")

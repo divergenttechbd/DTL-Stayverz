@@ -9,10 +9,31 @@ from base.type_choices import (
     ListingVerificationStatusOption,
     PlaceTypeOption,
 )
+from django.utils import timezone
 from configurations.data import default_cancellation_policy
 
 # Create your models here.
 User = get_user_model()
+
+
+class ListingSoftDeleteManager(models.Manager):
+    def get_queryset(self):
+        return ListingSoftDeleteQuerySet(self.model, using=self._db).filter(is_deleted=False)
+
+
+class ListingSoftDeleteQuerySet(models.QuerySet):
+    """
+    QuerySet that supports soft delete operations for listings.
+    """
+
+    def delete(self):
+        return self.update(is_deleted=True, deleted_at=timezone.now())
+
+    def hard_delete(self):
+        return super().delete()
+
+    def restore(self):
+        return self.update(is_deleted=False, deleted_at=None)
 
 
 class Category(BaseModel):
@@ -85,6 +106,12 @@ class Listing(BaseModel):
     total_booking_count = models.PositiveIntegerField(default=0)
     location = PointField(default=Point(0, 0))
 
+    is_deleted = models.BooleanField(default=False)
+    deleted_at = models.DateTimeField(blank=True, null=True)
+
+    objects = ListingSoftDeleteManager()
+    all_objects = ListingSoftDeleteQuerySet.as_manager()
+
     class Meta:
         verbose_name = "Listing"
         verbose_name_plural = "3. Listing"
@@ -96,6 +123,22 @@ class Listing(BaseModel):
     @property
     def longitude(self) -> float:
         return self.location.y
+
+    def delete(self, using=None, keep_parents=False):
+        """Override delete method to implement soft delete"""
+        self.is_deleted = True
+        self.deleted_at = timezone.now()
+        self.save()
+
+    def hard_delete(self, using=None, keep_parents=False):
+        """Method to actually delete the record from the database"""
+        super().delete(using, keep_parents)
+
+    def restore(self):
+        """Method to restore a soft-deleted record"""
+        self.is_deleted = False
+        self.deleted_at = None
+        self.save()
 
     def __str__(self):
         return self.title
@@ -130,3 +173,6 @@ class ListingCalendar(BaseModel):
 
     def __str__(self):
         return str(self.pk)
+
+
+

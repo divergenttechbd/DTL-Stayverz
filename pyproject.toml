@@ -5,6 +5,7 @@ description = "Starter Template For Django Rest Framework"
 authors = ["MahmudulHassan5809 <mahmudul.hassan240@gmail.com>"]
 license = "MIT"
 readme = "README.md"
+packages = [{include = "src"}]
 
 [tool.poetry.dependencies]
 python = "^3.10"

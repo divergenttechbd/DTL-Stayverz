@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.contrib.auth import get_user_model
 from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth.models import Permission
-from accounts.models import UserProfile
+from accounts.models import UserProfile, UserDTL
 
 # Register your models here.
 User = get_user_model()
@@ -74,4 +74,4 @@ class PermissionAdmin(admin.ModelAdmin):
     fields = ["name"]
 
 
-admin.site.register([UserProfile])
+admin.site.register([UserProfile, UserDTL])
