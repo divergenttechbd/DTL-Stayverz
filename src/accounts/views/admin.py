@@ -53,6 +53,8 @@ from notifications.utils import create_notification, send_notification
 from django.http import HttpResponse
 import xlsxwriter
 from io import BytesIO
+from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
 
 User = get_user_model()
 
@@ -430,12 +432,53 @@ class AdminBestSellingHostListAPIView(APIView):
     permission_classes = (IsStaff,)
     swagger_tags = ["Admin Dashboard"]
 
+    @swagger_auto_schema(
+        manual_parameters=[
+            openapi.Parameter(
+                'query_type',
+                openapi.IN_QUERY,
+                description="Time filter type: MONTHLY | YEARLY | WEEKLY",
+                type=openapi.TYPE_STRING,
+                default="MONTHLY"
+            ),
+            openapi.Parameter(
+                'sort_by',
+                openapi.IN_QUERY,
+                description="Field to sort by: total_sell_amount | total_property | first_name | last_name",
+                type=openapi.TYPE_STRING,
+                default="total_sell_amount"
+            ),
+            openapi.Parameter(
+                'order',
+                openapi.IN_QUERY,
+                description="Sort order: asc | desc",
+                type=openapi.TYPE_STRING,
+                default="desc"
+            ),
+        ],
+        responses={200: "Best selling host list returned"},
+    )
+
     def get(self, request, *args, **kwargs):
         current_month = now().month
         current_year, current_week, _ = now().isocalendar()
 
         query_type = request.GET.get("query_type", "MONTHLY")
+        sort_by = request.GET.get("sort_by", "total_sell_amount")
+        order = request.GET.get("order", "desc")
 
+        # Validate sort field
+        allowed_sort_fields = ["total_sell_amount", "total_property", "first_name", "last_name"]
+        if sort_by not in allowed_sort_fields:
+            return Response(
+                {"error": f"Invalid sort_by field. Allowed fields: {allowed_sort_fields}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Apply ordering
+        sort_order = f"-{sort_by}" if order.lower() == "desc" else sort_by
+
+        # Base filter
         filter_params = {"u_type": "host"}
         if query_type == "MONTHLY":
             filter_params["updated_at__month"] = current_month
@@ -446,6 +489,7 @@ class AdminBestSellingHostListAPIView(APIView):
             filter_params["updated_at__week"] = current_week
             filter_params["updated_at__year"] = current_year
 
+        # Query
         qs = (
             User.objects.filter(**filter_params)
             .only(
@@ -456,9 +500,10 @@ class AdminBestSellingHostListAPIView(APIView):
                 "total_sell_amount",
                 "total_property",
             )
-            .order_by("-total_sell_amount")[:10]
+            .order_by(sort_order)[:10]
         )
 
+        # Serialize
         data = UserSerializer(
             qs,
             many=True,
