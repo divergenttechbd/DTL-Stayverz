@@ -55,3 +55,23 @@ class BookingReviewSerializer(DynamicFieldsModelSerializer):
             obj.listing,
             fields=["id", "title", "cover_photo", "unique_id"],
         ).data
+
+    def get_booking(self, obj):
+        return BookingSerializer(
+            obj.booking,
+            fields=[
+                "id",
+                "invoice_no",
+                "check_in",
+                "check_out",
+                "guest_count",
+                "night_count",
+                "total_price",
+                "guest_payment_status",
+                "host_payment_status",
+                "status",
+                "listing",
+                "guest",
+                "host",
+            ],
+        ).data

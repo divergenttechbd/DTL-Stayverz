@@ -315,7 +315,7 @@ class AdminListingBookingReviewsAPIView(generics.ListAPIView):
 
     def get_serializer(self, *args, **kwargs):
         kwargs["context"] = self.get_serializer_context()
-        kwargs["r_method_fields"] = ["review_by", "review_for"]
+        kwargs["r_method_fields"] = ["review_by", "review_for", "booking", "listing"]
         return self.serializer_class(*args, **kwargs)
 
     def list(self, request, *args, **kwargs):
