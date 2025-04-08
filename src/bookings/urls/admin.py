@@ -6,7 +6,7 @@ from bookings.views.admin import (
     AdminBookingStatisticsAPIView,
     AdminListingBookingReviewsAPIView,
     AdminLatestBookingListAPIView,
-    AdminBookingReportDownloadAPIView,
+    AdminBookingReportDownloadAPIView, ExportBookingReviewsAPIView,
 )
 
 app_name = "admin"
@@ -32,6 +32,9 @@ urlpatterns = [
         AdminListingBookingReviewsAPIView.as_view(),
         name="reviews_list",
     ),
+
+
+    path("export-booking-reviews/", ExportBookingReviewsAPIView.as_view(), name="export_booking_reviews"),
     path(
         "latest-bookings/",
         AdminLatestBookingListAPIView.as_view(),

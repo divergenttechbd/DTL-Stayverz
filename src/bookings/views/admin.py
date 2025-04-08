@@ -9,6 +9,8 @@ from django.db.models import F, Value
 from django.db.models.functions import ExtractMonth, Concat, Substr
 from django.db.models import Q, Count, Sum, When, IntegerField, Case, CharField
 from django.utils.decorators import method_decorator
+from drf_yasg import openapi
+from drf_yasg.utils import swagger_auto_schema
 from rest_framework.permissions import IsAuthenticated
 from base.helpers.decorators import exception_handler
 from base.helpers.utils import field_name_to_label
@@ -21,7 +23,7 @@ from base.type_choices import BookingStatusOption, PaymentStatusOption
 from bookings.filters import AdminBookingFilter, BookingReviewFilter
 from bookings.models import Booking, ListingBookingReview
 from bookings.serializers import BookingReviewSerializer, BookingSerializer
-
+import pandas as pd
 
 class AdminLatestBookingListAPIView(APIView):
     permission_classes = (IsStaff,)
@@ -331,6 +333,61 @@ class AdminListingBookingReviewsAPIView(generics.ListAPIView):
 
         return response
 
+
+class ExportBookingReviewsAPIView(APIView):
+    permission_classes = (IsStaff,)
+    http_method_names = ["get"]
+    swagger_tags = ["Admin Bookings"]
+
+    @swagger_auto_schema(
+        operation_summary="Export Booking Reviews",
+        operation_description="Export all listing booking reviews with related booking, guest, host, and listing data in Excel or CSV format.",
+        responses={200: "File download"}
+    )
+    @method_decorator(exception_handler)
+    def get(self, request, *args, **kwargs):
+        print("----------------------------")
+        format = request.query_params.get("format", "excel").lower()
+        reviews = ListingBookingReview.objects.select_related(
+            "booking", "review_by", "review_for", "listing"
+        ).all()
+        print(reviews)
+        data = []
+        for review in reviews:
+            serializer = BookingReviewSerializer(
+                review,
+                context={"request": request},
+                r_method_fields=["review_by", "review_for", "listing", "booking"]
+            )
+            serialized_data = serializer.data
+
+            data.append({
+                "Review ID": review.id,
+                "Rating": review.rating,
+                "Review": review.review,
+                "Review By": serialized_data["review_by"]["full_name"],
+                "Review For": serialized_data["review_for"]["full_name"],
+                "Listing Title": serialized_data["listing"]["title"],
+                "Invoice No": serialized_data["booking"]["invoice_no"],
+                "Check In": serialized_data["booking"]["check_in"],
+                "Check Out": serialized_data["booking"]["check_out"],
+                "Total Price": serialized_data["booking"]["total_price"],
+                "Guest Count": serialized_data["booking"]["guest_count"],
+                "Status": serialized_data["booking"]["status"],
+            })
+
+        df = pd.DataFrame(data)
+
+        if format == "csv":
+            response = HttpResponse(content_type="text/csv")
+            response["Content-Disposition"] = "attachment; filename=booking_reviews.csv"
+            df.to_csv(path_or_buf=response, index=False)
+        else:
+            response = HttpResponse(content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+            response["Content-Disposition"] = "attachment; filename=booking_reviews.xlsx"
+            df.to_excel(response, index=False)
+
+        return response
 
 class AdminBookingReportDownloadAPIView(APIView):
     permission_classes = (IsStaff,)
