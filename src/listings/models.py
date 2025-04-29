@@ -2,6 +2,8 @@ from django.db import models
 from django.contrib.gis.db.models import PointField
 from django.contrib.gis.geos import Point
 from django.contrib.auth import get_user_model
+from rest_framework.exceptions import ValidationError
+
 from base.models import BaseModel
 from base.type_choices import (
     AmenityTypeOption,
@@ -11,7 +13,7 @@ from base.type_choices import (
 )
 from django.utils import timezone
 from configurations.data import default_cancellation_policy
-
+from django.utils.translation import gettext_lazy as _
 # Create your models here.
 User = get_user_model()
 
@@ -71,7 +73,7 @@ class Listing(BaseModel):
     description = models.TextField(blank=True)
     price = models.FloatField(default=0)
     cover_photo = models.URLField(blank=True)
-    images = models.JSONField(default=list)
+    images = models.JSONField(default=list, blank=True)
     place_type = models.CharField(
         max_length=20, choices=PlaceTypeOption.choices, blank=True
     )
@@ -106,6 +108,9 @@ class Listing(BaseModel):
     total_booking_count = models.PositiveIntegerField(default=0)
     location = PointField(default=Point(0, 0))
 
+    instant_booking_allowed = models.BooleanField(default=False)
+    require_guest_good_track_record = models.BooleanField(default=False)
+
     is_deleted = models.BooleanField(default=False)
     deleted_at = models.DateTimeField(blank=True, null=True)
 
@@ -139,6 +144,20 @@ class Listing(BaseModel):
         self.is_deleted = False
         self.deleted_at = None
         self.save()
+
+    def clean(self):
+        if self.require_guest_good_track_record and not self.instant_booking_allowed:
+            raise ValidationError({
+                'require_guest_good_track_record': _(
+                    'Cannot require good track record if instant booking is not allowed.')
+            })
+        super().clean()
+
+    def save(self, *args, **kwargs):
+        if not self.instant_booking_allowed:
+            self.require_guest_good_track_record = False
+        self.full_clean()
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.title

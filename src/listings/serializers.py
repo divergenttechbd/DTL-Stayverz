@@ -1,3 +1,4 @@
+from rest_framework.fields import BooleanField
 from rest_framework.serializers import (
     Serializer,
     ValidationError,
@@ -7,7 +8,7 @@ from rest_framework.serializers import (
 from accounts.serializers import UserSerializer
 from base.serializers import DynamicFieldsModelSerializer
 from listings.models import Listing, ListingAmenity, Category
-
+from django.utils.translation import gettext_lazy as _
 
 class CategorySerializer(DynamicFieldsModelSerializer):
     class Meta:
@@ -18,6 +19,8 @@ class CategorySerializer(DynamicFieldsModelSerializer):
 class ListingSerializer(DynamicFieldsModelSerializer):
     latitude = FloatField(source="location.y", read_only=True)
     longitude = FloatField(source="location.x", read_only=True)
+    instant_booking_allowed = BooleanField(required=False)
+    require_guest_good_track_record = BooleanField(required=False)
 
     class Meta:
         model = Listing
@@ -42,6 +45,29 @@ class ListingSerializer(DynamicFieldsModelSerializer):
                 "status",
             ],
         ).data
+
+    def validate(self, data):
+
+        instant_booking_final_state = data.get(
+            'instant_booking_allowed',
+            getattr(self.instance, 'instant_booking_allowed', False) if self.instance else False
+        )
+
+        require_good_track_record_incoming = data.get('require_guest_good_track_record')
+
+
+        if require_good_track_record_incoming is True and instant_booking_final_state is False:
+
+            raise ValidationError({
+                'require_guest_good_track_record': _(
+                    'Cannot set require good track record to true when instant booking is false or being set to false.')
+            })
+
+        if not instant_booking_final_state:
+            data['require_guest_good_track_record'] = False
+
+
+        return data
 
 
 class ListingAmenitySerializer(DynamicFieldsModelSerializer):

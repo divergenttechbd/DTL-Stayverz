@@ -40,6 +40,8 @@ v1_patterns = [
         "notifications/", include("notifications.urls", namespace="notifications.apis")
     ),
     path("document-upload/", DocumentUploadS3ApiView.as_view()),
+
+    path("coupons/", include("coupons.urls")),
 ]
 
 urlpatterns = [
