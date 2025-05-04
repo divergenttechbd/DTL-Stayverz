@@ -9,6 +9,8 @@ from drf_yasg.views import get_schema_view
 from myproject.settings import STATIC_ROOT, STATIC_URL, MEDIA_ROOT, MEDIA_URL
 from rest_framework import permissions
 
+from quick_reply.views import QuickReplyListCreateAPIView
+
 schema_view = get_schema_view(
     openapi.Info(
         title=settings.PROJECT_TITLE,
@@ -42,6 +44,7 @@ v1_patterns = [
     path("document-upload/", DocumentUploadS3ApiView.as_view()),
 
     path("coupons/", include("coupons.urls")),
+    path("quick_reply/", include("quick_reply.urls", namespace="quick_reply.apis")),
 ]
 
 urlpatterns = [
