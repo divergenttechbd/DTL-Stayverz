@@ -11,6 +11,8 @@ from django.contrib.auth import get_user_model
 from django.utils.decorators import method_decorator
 from rest_framework.response import Response
 from rest_framework import status
+
+from accounts.models import UserProfile
 from accounts.serializers import (
     ChangePasswordSerializer,
     HostGuestUserSerializer,
@@ -51,6 +53,8 @@ class UserProfileRetrieveUpdateAPIView(APIView):
     def get(self, request, *args, **kwargs):
         user = self.request.user
         user_data = HostGuestUserSerializer(user).data
+
+        print(user_data)
         user_data["profile"] = (
             UserProfileSerializer(request.user.userprofile).data
             if hasattr(request.user, "userprofile")
@@ -110,33 +114,80 @@ class UserProfileRetrieveUpdateAPIView(APIView):
             user_data["unread_message_count"] = total_unread_msg_count
         return Response(data=user_data, status=status.HTTP_200_OK)
 
-    @swagger_auto_schema(request_body=UserProfileSerializer)
+    @swagger_auto_schema(
+        request_body=UserProfileSerializer(exclude_fields=('user',))
+    )
     @method_decorator(exception_handler)
     def patch(self, request, *args, **kwargs):
-        print(" --------------- ")
-        print(self.request.user)
-        instance = self.request.user
-        print(instance)
-        serializer = UserProfileSerializer(
-            instance=instance,
-            data=request.data,
-            partial=True,
-            exclude_fields=self.removeable_keys,
-        )
-        serializer.is_valid(raise_exception=True)
+        user_instance = self.request.user
+
+
+        profile_field_names = [f.name for f in UserProfile._meta.get_fields() if
+                               f.name not in ('user', 'id', 'created_at', 'updated_at')]
+        user_field_names = ['first_name', 'last_name', 'image', 'email']
+
+        profile_data = {}
+        user_data = {}
+
+        for key, value in request.data.items():
+            if key in profile_field_names:
+                profile_data[key] = value
+            elif key in user_field_names:
+                user_data[key] = value
+
+
+        profile_instance, created = UserProfile.objects.get_or_create(user=user_instance)
+
+
+        profile_serializer = None
+        if profile_data:
+            profile_serializer = UserProfileSerializer(
+                instance=profile_instance,
+                data=profile_data,
+                partial=True  # Allow partial updates
+            )
+            profile_serializer.is_valid(
+                raise_exception=True)
+        else:
+            profile_serializer = UserProfileSerializer(instance=profile_instance)
+
+
+        user_serializer = None
+        if user_data:
+            user_serializer = HostGuestUserSerializer(
+                instance=user_instance,
+                data=user_data,
+                partial=True
+            )
+            user_serializer.is_valid(raise_exception=True)
+
+
+        updated_profile = profile_instance  # Initialize with current profile
+        updated_user = user_instance  # Initialize with current user
+
         with transaction.atomic():
-            serializer.save()
-            if request.data.get("image"):
-                user = request.user
-                user.image = request.data.get("image")
-                user.save()
-                mongo_update_user(
-                    data={
-                        "image": request.data.get("image"),
-                        "username": request.user.username,
-                    }
-                )
-        return Response(serializer.data, status=status.HTTP_200_OK)
+            if profile_serializer and profile_data:  # Only save if data was provided and serializer is valid
+                updated_profile = profile_serializer.save()
+
+            if user_serializer and user_data:  # Only save if data was provided and serializer is valid
+                updated_user = user_serializer.save()
+                # If user fields like 'image' were updated, update Mongo
+                mongo_user_update_data = {"username": updated_user.username}
+                if 'image' in user_data:
+                    mongo_user_update_data['image'] = user_data['image']
+
+                if len(mongo_user_update_data) > 1:
+                    try:
+                        mongo_update_user(data=mongo_user_update_data)
+                    except Exception as e:
+                        # Log error if Mongo update fails but don't fail the whole request
+                        print(f"Warning: Failed to update user in MongoDB: {e}")
+
+        response_user_data = HostGuestUserSerializer(updated_user).data
+        response_user_data["profile"] = UserProfileSerializer(updated_profile).data
+
+
+        return Response(response_user_data, status=status.HTTP_200_OK)
 
 
 class UserUnreadMessageCountAPIView(APIView):

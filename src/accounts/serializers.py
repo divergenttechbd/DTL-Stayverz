@@ -70,6 +70,22 @@ class UserSerializer(DynamicFieldsModelSerializer):
             "password": {"write_only": True},
         }
 
+    def validate(self, attrs):
+        user = None
+
+        if self.instance:
+            user = self.instance.user
+
+        if user and user.u_type == UserTypeOption.HOST:
+            emergency_contact = attrs.get("emergency_contact")
+            is_updating_field = emergency_contact in attrs
+            if is_updating_field:
+                if not emergency_contact:
+                    raise ValidationError({"emergency_contact": "Emergency contact is required for hosts."})
+            elif self.instance and self.instance.emergency_contact:
+                raise ValidationError({"emergency_contact": "Emergency contact is required for hosts."})
+        return attrs
+
     def get_full_name(self, obj):
         return f"{obj.first_name} {obj.last_name}"
 

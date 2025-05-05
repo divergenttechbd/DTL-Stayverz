@@ -61,6 +61,7 @@ class UserProfile(BaseModel):
     longitude = models.FloatField(default=0)
     bio = models.TextField(blank=True)
     languages = ArrayField(models.CharField(max_length=50), blank=True)
+    emergency_contact = models.CharField(max_length=50, blank=True)
 
     class Meta:
         verbose_name = "User Profile"
