@@ -45,6 +45,8 @@ v1_patterns = [
 
     path("coupons/", include("coupons.urls")),
     path("quick_reply/", include("quick_reply.urls", namespace="quick_reply.apis")),
+
+    path("referrals/", include("referrals.urls", namespace="referrals.apis")),
 ]
 
 urlpatterns = [

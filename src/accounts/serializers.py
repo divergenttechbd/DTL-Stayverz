@@ -65,7 +65,7 @@ class UserSerializer(DynamicFieldsModelSerializer):
     class Meta:
         model = User
         fields = "__all__"
-
+        ref_name = 'AccountsUserSerializer'
         extra_kwargs = {
             "password": {"write_only": True},
         }
@@ -159,6 +159,12 @@ class RegisterSerializer(AuthSerializer):
     full_name = CharField(required=True)
     password = CharField(required=True)
     otp = CharField(required=True)
+
+class RegisterSerializerRef(AuthSerializer):
+    full_name = CharField(required=True)
+    password = CharField(required=True)
+    otp = CharField(required=True)
+    referral_code = CharField(required=True)
 
 
 class ResetPasswordSerializer(AuthSerializer):

@@ -116,6 +116,9 @@ class GuestBookingProcess:
             result_data.append(current_group)
 
         data["calendar_info"] = result_data
+
+        data["is_test_booking"] = request_data.get("test_booking", False) is True
+
         return {"status": 200, "message": "ok", "data": data}
 
 

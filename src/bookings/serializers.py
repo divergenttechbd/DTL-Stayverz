@@ -1,5 +1,6 @@
 from accounts.serializers import UserSerializer
 from base.serializers import DynamicFieldsModelSerializer
+from base.type_choices import PaymentStatusOption, BookingStatusOption
 from bookings.models import Booking, ListingBookingReview
 from listings.serializers import ListingSerializer
 
@@ -8,6 +9,23 @@ class BookingSerializer(DynamicFieldsModelSerializer):
     class Meta:
         model = Booking
         fields = "__all__"
+
+    def create(self, validated_data):
+        # Check if test booking flag is passed (from GuestBookingProcess)
+        is_test_booking = validated_data.pop("is_test_booking", False)
+
+        if is_test_booking:
+            # Mark booking as paid, bypass gateway
+            validated_data["guest_payment_status"] = PaymentStatusOption.PAID
+            validated_data["paid_amount"] = validated_data["total_price"]
+            validated_data["status"] = BookingStatusOption.CONFIRMED
+            validated_data["pgw_transaction_number"] = "TEST-BYPASS"
+            validated_data["reservation_code"] = f"TEST-{validated_data['invoice_no'][-6:]}"  # Optional
+
+        # Create the booking
+        booking = super().create(validated_data)    
+
+        return booking
 
     def get_listing(self, obj):
         return ListingSerializer(

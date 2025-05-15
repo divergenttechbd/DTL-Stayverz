@@ -5,7 +5,7 @@ from accounts.views.public import (
     RefreshTokenAPIView,
     PublicAdminResetPasswordAPIView,
     PublicUserProfileAPIView,
-    PublicUserReviewListApi,
+    PublicUserReviewListApi, PublicUserRegisterAPIViewHost,
 )
 from django.urls import path
 
@@ -33,4 +33,6 @@ urlpatterns = [
     path(
         "reviews/<int:user_id>/", PublicUserReviewListApi.as_view(), name="review_list"
     ),
+
+    path("register/ref/", PublicUserRegisterAPIViewHost.as_view(), name="register-host"),
 ]

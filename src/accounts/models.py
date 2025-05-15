@@ -41,6 +41,7 @@ class User(AbstractUser, BaseModel):
     total_property = models.PositiveIntegerField(default=0)
     total_sell_amount = models.FloatField(default=0)
     wishlist_listings = ArrayField(models.PositiveBigIntegerField(), blank=True)
+    points_balance = models.PositiveIntegerField(default=0, help_text="Points earned by guest users for spending and referrals.")
 
     # avg_rating,
 
