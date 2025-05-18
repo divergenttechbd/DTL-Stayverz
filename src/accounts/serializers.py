@@ -107,6 +107,16 @@ class UserIdentityVerificationSerializer(Serializer):
         return value
 
 
+class UserLiveVerificationSerializer(Serializer):
+    document_type = CharField(required=True)
+    image = CharField(required=True)
+
+    def validate_document_type(self, value):
+        if value not in ["passport", "nid", "driving_license", "live"]:
+            raise ValidationError("document_type is not valid")
+        return value
+
+
 class StatusUpdateSerializer(Serializer):
     first_name = CharField(required=False)
     last_name = CharField(required=False)
@@ -160,11 +170,30 @@ class RegisterSerializer(AuthSerializer):
     password = CharField(required=True)
     otp = CharField(required=True)
 
-class RegisterSerializerRef(AuthSerializer):
+
+
+class AuthSerializerDTL(Serializer):
+    phone_number = CharField(required=True)
+    u_type = CharField(required=True)
+
+    # def validate_u_type(self, value):
+    #     if value not in [UserTypeOption.HOST, UserTypeOption.GUEST]:
+    #         raise ValidationError("u_type is invalid")
+    #     return value
+
+    def validate_phone_number(self, value):
+        pattern = r"^\d{11}$"
+        if not re.match(pattern, value):
+            raise ValidationError("invalid phone number")
+        return value
+
+
+
+class RegisterSerializerRef(AuthSerializerDTL):
     full_name = CharField(required=True)
     password = CharField(required=True)
     otp = CharField(required=True)
-    referral_code = CharField(required=True)
+    referral_code = CharField(required=False)
 
 
 class ResetPasswordSerializer(AuthSerializer):

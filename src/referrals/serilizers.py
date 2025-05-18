@@ -1,3 +1,4 @@
+from django.db.models.functions import Coalesce
 from rest_framework import serializers
 from django.db.models import Sum
 from decimal import Decimal
@@ -10,8 +11,9 @@ from .models import Referral, ReferralReward, Coupon, RewardStatus, ReferralType
 class UserSerializer(serializers.Serializer): # Placeholder
     id = serializers.IntegerField(read_only=True)
     username = serializers.CharField(read_only=True)
-    full_name = serializers.CharField(read_only=True) # Assuming User model has get_full_name or similar
+    full_name = serializers.CharField(read_only=True)
     u_type = serializers.CharField(read_only=True)
+    image = serializers.URLField(read_only=True, allow_null=True)
 
 
     # This is a placeholder. You should use your actual UserSerializer.
@@ -30,10 +32,13 @@ class UserSerializer(serializers.Serializer): # Placeholder
 
 class ReferralSerializer(serializers.ModelSerializer):
     referrer = UserSerializer(read_only=True, fields=['id', 'username', 'full_name', 'u_type'])
-    referred_user = UserSerializer(read_only=True, fields=['id', 'username', 'full_name', 'u_type'],allow_null=True)
+    referred_user = UserSerializer(read_only=True, fields=['id', 'username', 'full_name', 'u_type', 'image'],allow_null=True)
     referral_link = serializers.SerializerMethodField()
     referral_type_display = serializers.CharField(source='get_referral_type_display', read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
+
+    reward_value_from_this_referral = serializers.SerializerMethodField()
+    reward_unit_from_this_referral = serializers.SerializerMethodField()
 
     class Meta:
         model = Referral
@@ -48,6 +53,8 @@ class ReferralSerializer(serializers.ModelSerializer):
             'status_display',
             'rewarded_booking_count',
             'max_rewardable_bookings',
+            'reward_value_from_this_referral',
+            'reward_unit_from_this_referral',
             'is_active_for_rewards', # Property from model
             'created_at',
             'updated_at',
@@ -60,6 +67,35 @@ class ReferralSerializer(serializers.ModelSerializer):
         registration_path = getattr(settings, 'FRONTEND_REGISTER_PATH', '/register')
         # Append referral type to the link to help frontend and registration logic
         return f"{base_url}{registration_path}?ref={obj.referral_code}&ref_type={obj.referral_type}"
+
+    def get_reward_value_from_this_referral(self, obj: Referral) -> str:
+
+        if obj.referrer:
+            current_requesting_user = None
+            if 'request' in self.context and self.context['request']:
+                current_requesting_user = self.context['request'].user
+
+            if current_requesting_user and obj.referrer == current_requesting_user:
+                # Sum of 'amount' from ReferralReward where the current user is the beneficiary of this referral
+                total_value = ReferralReward.objects.filter(
+                    referral=obj,
+                    user=obj.referrer  # The reward was given to the referrer
+                ).aggregate(
+                    total=Coalesce(Sum('amount'), Decimal('0.00'))
+                )['total']
+
+                # For GUEST_TO_GUEST, 'amount' in ReferralReward stores points.
+                # No conversion needed here, just return the sum. Frontend will use the unit.
+                return str(total_value)
+
+        return '0.00'
+
+    def get_reward_unit_from_this_referral(self, obj: Referral) -> str:
+        if obj.referral_type == ReferralType.HOST_TO_HOST:
+            return "Taka"
+        elif obj.referral_type == ReferralType.GUEST_TO_GUEST:
+            return "Points"
+        return ""
 
 
 class ReferralRewardSerializer(serializers.ModelSerializer):

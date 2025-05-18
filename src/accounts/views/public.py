@@ -3,6 +3,7 @@ from uuid import UUID
 
 import jwt
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.shortcuts import get_object_or_404
 from django.utils.decorators import method_decorator
@@ -43,7 +44,7 @@ from listings.serializers import ListingSerializer
 from notifications.models import Notification
 from notifications.utils import create_notification, send_notification
 from otp.service import OtpService
-from referrals.models import Referral, ReferralStatus
+from referrals.models import Referral, ReferralStatus, ReferralType
 from wishlists.models import Wishlist
 
 
@@ -475,153 +476,337 @@ class PublicUserRegisterAPIViewHost(views.APIView):
 
     @method_decorator(exception_handler)
     def post(self, request, *args, **kwargs):
-        serializer = RegisterSerializerRef(data=request.data) # This now includes referral_code
+        serializer = RegisterSerializerRef(data=request.data)
         serializer.is_valid(raise_exception=True)
+        validated_data = serializer.validated_data
+        phone_number = validated_data['phone_number']
+        referral_code_str = validated_data.get('referral_code')
 
-        validated_data = serializer.validated_data # Use validated_data
+        print(validated_data)
+        # If no referral code provided, create both user types without referral processing
+        if not referral_code_str:
+            # Process registration for both user types
+            response_data = self._create_dual_users(validated_data)
+            return Response(response_data, status=status.HTTP_201_CREATED)
 
-        # Your existing username generation and checks
-        username = f"{validated_data['phone_number']}_{validated_data['u_type']}"
-        if User.objects.filter(username=username).exists():
+        # If referral code is provided, determine user type from the referral
+        try:
+            referral_code_uuid = UUID(referral_code_str)
+            potential_referral = Referral.objects.filter(
+                referral_code=referral_code_uuid,
+                status=ReferralStatus.PENDING,
+                referred_user__isnull=True
+            ).select_related('referrer').first()
+
+            if not potential_referral:
+                return Response(
+                    {"referral_code": ["Invalid, expired, or already used referral code."]},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Determine user type from the referral type
+            if potential_referral.referral_type == ReferralType.HOST_TO_HOST:
+                primary_user_type = UserTypeOption.HOST
+                secondary_user_type = UserTypeOption.GUEST
+            elif potential_referral.referral_type == ReferralType.GUEST_TO_GUEST:
+                primary_user_type = UserTypeOption.GUEST
+                secondary_user_type = UserTypeOption.HOST
+            else:
+                return Response(
+                    {"referral_code": ["Invalid referral type."]},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Check if primary user already exists
+            primary_username = f"{phone_number}_{primary_user_type}"
+            secondary_username = f"{phone_number}_{secondary_user_type}"
+
+            if User.objects.filter(username__in=[primary_username, secondary_username]).exists():
+                return Response(
+                    {"message": "User already exists with this phone number"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Create both users but process referral only for primary user
+            response_data = self._create_dual_users_with_referral(
+                validated_data,
+                primary_user_type,
+                secondary_user_type,
+                potential_referral
+            )
+            return Response(response_data, status=status.HTTP_201_CREATED)
+
+        except ValueError:
             return Response(
-                {"message": "User already exists"}, status=status.HTTP_400_BAD_REQUEST
+                {"referral_code": ["Invalid referral code format."]},
+                status=status.HTTP_400_BAD_REQUEST
             )
 
+    def _create_dual_users_with_referral(self, validated_data, primary_user_type, secondary_user_type,
+                                         referral_instance):
+        """Create both user types with referral processing only for the primary type"""
+        phone_number = validated_data['phone_number']
+
+        # For validation, we use the primary username
+        validation_username = f"{phone_number}_{primary_user_type}"
         if not OtpService.validate_otp(
             input_otp=validated_data["otp"],
-            username=username, # Use the constructed username for OTP scope
+            username=validation_username,
             scope=OtpScopeOption.REGISTER,
         ):
-            return Response(
-                {"message": "Invalid otp"}, status=status.HTTP_400_BAD_REQUEST
-            )
+            raise ValidationError({"message": "Invalid OTP"})
 
-        # Prepare data for HostGuestUserSerializer
-        user_creation_data = validated_data.copy() # Start with validated data
-        user_creation_data["password"] = make_password(validated_data["password"])
-        user_creation_data["username"] = username
+        # Create both users within a transaction
+        primary_user = None
+        secondary_user = None
 
-        name_parts = validated_data["full_name"].split()
-        user_creation_data["first_name"] = name_parts[0]
-        user_creation_data["last_name"] = (
-            " ".join(name_parts[1:]) if len(name_parts) > 1 else ""
-        )
-        user_creation_data["wishlist_listings"] = [] # Default for new users
-
-        # Do not use HostGuestUserSerializer for initial validation if it expects an instance
-        # Or ensure it can handle creation. Let's assume it's for creation for now.
-        # The primary validation for registration fields is already done by RegisterSerializer.
-        user_data_serializer = HostGuestUserSerializer(data=user_creation_data)
-        user_data_serializer.is_valid(raise_exception=True)
-
-
-        # --- BEGIN REFERRAL LOGIC ---
-        referral_code_str = validated_data.get('referral_code')
-        active_referral_instance = None # Will hold the Referral model instance if found
-        if referral_code_str:
-            try:
-                referral_code_uuid = UUID(referral_code_str) # Ensure it's a valid UUID format
-                active_referral_instance = Referral.objects.filter(
-                    referral_code=referral_code_uuid,
-                    status=ReferralStatus.PENDING, # Only PENDING codes can be used
-                    referred_user__isnull=True     # Ensure it hasn't been used by someone else
-                ).select_related('referrer').first()
-
-                if not active_referral_instance:
-                    print(f"Referral code {referral_code_str} not found or already used.")
-                # No error response here, just proceed without referral benefits if code is invalid/used
-            except (ValueError, TypeError): # Catches invalid UUID format
-                print(f"Invalid referral code format: {referral_code_str}")
-                active_referral_instance = None
-        # --- END REFERRAL LOGIC ---
-
-
-        # Your existing notification setup
-        event_type = NotificationEventTypeOption.SIGN_UP
-        user_notification_payload = create_notification( # Renamed to avoid clash
-            event_type=event_type,
-            data={
-                "identifier": "",
-                "message": "Congratulations ! You’ve successfully joined Stayverz community. It’s time to setup your profile",
-                "link": f"/profile/verify-profile",
-            },
-            n_type=NotificationTypeOption.USER_NOTIFICATION,
-        )
-        admin_notification_payload = create_notification( # Renamed to avoid clash
-            event_type=event_type,
-            data={
-                "identifier": "",
-                "message": f"Congralutations ! You have a new {validated_data['u_type']} onboard.",
-            },
-            n_type=NotificationTypeOption.ADMIN_NOTIFICATION,
-        )
-
-        # Transaction for creating user and related objects
         with transaction.atomic():
-            # Save the new user using the HostGuestUserSerializer
-            new_user = user_data_serializer.save() # new_user is the created User instance
+            # Create primary user (with referral)
+            primary_user = self._create_user_of_type(validated_data, primary_user_type)
 
-            UserProfile.objects.create(user=new_user, languages=[])
-            Wishlist.objects.create(user=new_user)
+            # Process referral for primary user only
+            referral_instance.referred_user = primary_user
+            if primary_user_type == UserTypeOption.HOST:
+                referral_instance.status = ReferralStatus.HOST_ACTIVE
+            elif primary_user_type == UserTypeOption.GUEST:
+                referral_instance.status = ReferralStatus.SIGNED_UP
+            referral_instance.save(update_fields=['referred_user', 'status', 'updated_at'])
 
-            # Update notification payloads with the new user's ID
-            user_notification_payload["user_id"] = new_user.id
-            admin_notification_payload["data"][
-                "link"
-            ] = f"{settings.FRONTEND_ADMIN_BASE_URL}/user/{new_user.id}/edit"
+            # Create secondary user (no referral)
+            secondary_user = self._create_user_of_type(validated_data, secondary_user_type)
 
-            Notification.objects.bulk_create(
-                [
-                    Notification(**item)
-                    for item in [user_notification_payload, admin_notification_payload]
-                ]
-            )
-            create_user(user_data_serializer.data) # Assuming this is your Mongo create
+            # # Create relationship between the two users
+            # if primary_user_type == UserTypeOption.HOST:
+            #     UserRelationship.objects.create(
+            #         host_user=primary_user,
+            #         guest_user=secondary_user,
+            #         relationship_type=UserRelationshipType.SELF
+            #     )
+            # else:
+            #     UserRelationship.objects.create(
+            #         host_user=secondary_user,
+            #         guest_user=primary_user,
+            #         relationship_type=UserRelationshipType.SELF
+            #     )
 
-            # --- UPDATE REFERRAL INSTANCE (if applicable) ---
-            if active_referral_instance and new_user.u_type == UserTypeOption.HOST:
-                # Check for self-referral
-                if active_referral_instance.referrer == new_user:
-                    print(f"Self-referral attempt blocked for user {new_user.username}")
-                else:
-                    active_referral_instance.referred_user = new_user
-                    # Change status to HOST_ACTIVE because they signed up as a host.
-                    # Further checks (e.g., ID verification, first listing) could potentially move them
-                    # to HOST_ACTIVE later if you have intermediate steps. For now, direct to HOST_ACTIVE.
-                    active_referral_instance.status = ReferralStatus.HOST_ACTIVE
-                    active_referral_instance.save(update_fields=['referred_user', 'status', 'updated_at'])
-                    print(f"Referral successful: {active_referral_instance.referrer.username} referred {new_user.username}")
-                    # TODO: Optionally send a notification to the referrer here
-            elif active_referral_instance and new_user.u_type != UserTypeOption.HOST:
-                # User used a referral code but didn't sign up as a host.
-                # The referral remains PENDING. No reward for this signup type.
-                print(f"Referral code {referral_code_str} used by non-host user {new_user.username}. Referral remains pending.")
-            # --- END UPDATE REFERRAL INSTANCE ---
+        # Post-creation actions - we'll primarily use the primary user account (referral-based)
+        # since that's what the referral was for
+        for username in [primary_user.username, secondary_user.username]:
+            OtpService.delete_otp(username=username, scope=OtpScopeOption.REGISTER)
 
-        # Post-creation actions
-        OtpService.delete_otp(username=username, scope=OtpScopeOption.REGISTER)
+        # Cache and tokens for primary user
         set_cache(
             key=f"{username}_token_data",
             value=json.dumps(
                 UserSerializer(
-                    new_user, fields=["id", "username", "u_type", "phone_number"]
+                    primary_user, fields=["id", "username", "u_type", "phone_number"]
                 ).data
             ),
             ttl=5 * 60 * 60,
         )
 
-        access_token, refresh_token = create_tokens(user=new_user)
-        response_data = { # Renamed variable for clarity
+        access_token, refresh_token = create_tokens(user=primary_user)
+        send_sms(
+            username=primary_user.phone_number,
+            message=f"Welcome! You've joined as a {primary_user_type} through referral, and we also created a {secondary_user_type} account for you."
+        )
+
+        return {
+            "message": f"Successfully created accounts with {primary_user_type} referral.",
             "access_token": access_token,
             "refresh_token": refresh_token,
+            "primary_user": {
+                "id": primary_user.id,
+                "username": primary_user.username,
+                "full_name": primary_user.get_full_name(),
+                "u_type": primary_user.u_type,
+                "email": primary_user.email,
+                "is_phone_verified": primary_user.is_phone_verified,
+                "is_email_verified": primary_user.is_email_verified,
+                "referral_applied": True
+            },
+            "secondary_user": {
+                "id": secondary_user.id,
+                "username": secondary_user.username,
+                "u_type": secondary_user.u_type,
+                "referral_applied": False
+            }
         }
+
+    def _create_dual_users(self, validated_data):
+        """Create both HOST and GUEST users with the same credentials (no referral)"""
+        phone_number = validated_data['phone_number']
+
+        # Check if either user type already exists
+        host_username = f"{phone_number}_{UserTypeOption.HOST}"
+        guest_username = f"{phone_number}_{UserTypeOption.GUEST}"
+
+        if User.objects.filter(username__in=[host_username, guest_username]).exists():
+            raise ValidationError({"message": "User already exists with this phone number"})
+
+        # For dual users, validate OTP against either username (just use one consistently)
+        validation_username = guest_username
+        if not OtpService.validate_otp(
+            input_otp=validated_data["otp"],
+            username=validation_username,
+            scope=OtpScopeOption.REGISTER,
+        ):
+            raise ValidationError({"message": "Invalid OTP"})
+
+        # Create both users within a transaction
+        host_user = None
+        guest_user = None
+
+        with transaction.atomic():
+            # Create HOST user
+            host_user = self._create_user_of_type(validated_data, UserTypeOption.HOST)
+
+            # Create GUEST user with same details
+            guest_user = self._create_user_of_type(validated_data, UserTypeOption.GUEST)
+
+            # Create a relationship between the two users
+            # UserRelationship.objects.create(
+            #     host_user=host_user,
+            #     guest_user=guest_user,
+            #     relationship_type=UserRelationshipType.SELF
+            # )
+
+        # Post-creation actions - we'll primarily use the GUEST account
+        # but provide information about both accounts
+        primary_user = guest_user  # Default to GUEST as primary
+
+        for username in [host_username, guest_username]:
+            OtpService.delete_otp(username=username, scope=OtpScopeOption.REGISTER)
+
+        # Cache and tokens for primary user
+        set_cache(
+            key=f"{username}_token_data",
+            value=json.dumps(
+                UserSerializer(
+                    primary_user, fields=["id", "username", "u_type", "phone_number"]
+                ).data
+            ),
+            ttl=5 * 60 * 60,
+        )
+
+        access_token, refresh_token = create_tokens(user=primary_user)
         send_sms(
-            username=new_user.phone_number,
-            message="Congratulations ! You’ve successfully joined Stayverz community",
+            username=primary_user.phone_number,
+            message="Welcome! Both Host and Guest accounts have been created for you."
         )
-        # Use the updated notification payloads for sending
-        send_notification(notification_data=[user_notification_payload, admin_notification_payload])
-        return Response(
-            response_data, # Send tokens
-            status=status.HTTP_201_CREATED,
+
+        return {
+            "message": "Both Host and Guest accounts created successfully.",
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "primary_user": {
+                "id": primary_user.id,
+                "username": primary_user.username,
+                "full_name": primary_user.get_full_name(),
+                "u_type": primary_user.u_type,
+                "email": primary_user.email,
+                "is_phone_verified": primary_user.is_phone_verified,
+                "is_email_verified": primary_user.is_email_verified,
+            },
+            "secondary_user": {
+                "id": host_user.id,
+                "username": host_user.username,
+                "u_type": host_user.u_type,
+            }
+        }
+
+    def _create_user_of_type(self, validated_data, user_type):
+        """Helper method to create a user of specific type"""
+        phone_number = validated_data['phone_number']
+        username = f"{phone_number}_{user_type}"
+
+        user_creation_data = {
+            "username": username,
+            "phone_number": phone_number,
+            "u_type": user_type,
+            "password": make_password(validated_data["password"]),
+            "email": validated_data.get("email", ""),
+        }
+
+        name_parts = validated_data["full_name"].split(" ", 1)
+        user_creation_data["first_name"] = name_parts[0]
+        user_creation_data["last_name"] = name_parts[1] if len(name_parts) > 1 else ""
+        user_creation_data["wishlist_listings"] = []
+
+        print(" ----=== --- ", user_creation_data)
+
+        user_data_serializer = HostGuestUserSerializer(data=user_creation_data)
+        user_data_serializer.is_valid(raise_exception=True)
+
+        user_creation_data = user_data_serializer.validated_data
+
+        print( " ---------------------------------- ")
+
+        print(user_creation_data, " ---+++---- ")
+
+        new_user = user_data_serializer.save()
+        new_user.is_phone_verified = True
+        if new_user.email:
+            new_user.is_email_verified = False
+        new_user.save(update_fields=['is_phone_verified', 'is_email_verified'])
+
+        # Now we have a model instance, we can get its data for MongoDB
+        user_data = UserSerializer(new_user).data
+        create_user(user_data)
+
+        UserProfile.objects.create(user=new_user, languages=[])
+        Wishlist.objects.create(user=new_user)
+
+        # Create notifications - pass the actual user instance, not serialized data
+        self._create_notifications(new_user)
+
+        return new_user
+
+    def _create_notifications(self, user):
+        """Create notifications for a new user
+
+        Args:
+            user: Either a User model instance or a dictionary containing user data
+        """
+        event_type = NotificationEventTypeOption.SIGN_UP
+
+        # Determine if user is a model instance or a dictionary
+        if hasattr(user, 'username'):
+            # It's a model instance
+            username = user.username
+            user_id = user.id
+            u_type = user.get_u_type_display() if hasattr(user, 'get_u_type_display') else user.u_type
+        else:
+            # It's a dictionary
+            username = user.get('username')
+            user_id = user.get('id')
+            u_type = user.get('u_type')
+
+        user_notification_payload = create_notification(
+            event_type=event_type,
+            data={
+                "identifier": username,
+                "message": "Congratulations! You've successfully joined our community.",
+                "link": f"/profile/edit",
+            },
+            n_type=NotificationTypeOption.USER_NOTIFICATION,
         )
+        user_notification_payload["user_id"] = user_id
+
+        admin_notification_payload = create_notification(
+            event_type=event_type,
+            data={
+                "identifier": username,
+                "message": f"New {u_type} onboard: {username}.",
+                "link": f"{settings.FRONTEND_ADMIN_BASE_URL}/users/{user_id}/view"
+            },
+            n_type=NotificationTypeOption.ADMIN_NOTIFICATION,
+        )
+
+        notifications_to_create = [
+            Notification(**item) for item in [user_notification_payload, admin_notification_payload]
+            if item.get("user_id") or item["n_type"] == NotificationTypeOption.ADMIN_NOTIFICATION
+        ]
+
+        if notifications_to_create:
+            Notification.objects.bulk_create(notifications_to_create)

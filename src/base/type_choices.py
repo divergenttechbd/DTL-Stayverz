@@ -25,6 +25,7 @@ class IdentityVerificationMethod(models.TextChoices):
     PASSPORT = "passport", "passport"
     NID = "nid", "nid"
     DRIVING_LICENSE = "driving_license", "driving_license"
+    LIVE = "live", "live"
 
 
 class IdentityVerificationStatusOption(models.TextChoices):

@@ -6,7 +6,7 @@ from accounts.views.user import (
     UserReviewListApi,
     UserUnreadMessageCountAPIView,
     logout,
-    mobile_login,
+    mobile_login, UserSelfieVerificationAPIView,
 )
 from django.urls import path
 
@@ -22,6 +22,11 @@ urlpatterns = [
         "identity-verification/",
         UserIdentityVerificationAPIView.as_view(),
         name="identity_verification",
+    ),
+    path(
+        "identity-live-verification/",
+        UserSelfieVerificationAPIView.as_view(),
+        name="identity_live_verification",
     ),
     path(
         "email-verification/",

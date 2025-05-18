@@ -17,7 +17,7 @@ from accounts.serializers import (
     ChangePasswordSerializer,
     HostGuestUserSerializer,
     UserIdentityVerificationSerializer,
-    UserProfileSerializer,
+    UserProfileSerializer, UserLiveVerificationSerializer,
 )
 from base.cache.redis_cache import delete_cache, set_cache
 from base.helpers.decorators import exception_handler
@@ -420,3 +420,70 @@ def mobile_login(request: Request) -> Response:
     )
 
     return Response({"message": "success"}, status=status.HTTP_200_OK)
+
+
+# --------------------- DTL ---------------------------------
+
+class UserSelfieVerificationAPIView(APIView):
+    permission_classes = (IsAuthenticated,)
+    http_method_names = ["post"]
+    swagger_tags = ["User Profile"]
+
+
+    @swagger_auto_schema(request_body=UserLiveVerificationSerializer, tags=['User Profile'])
+    @method_decorator(exception_handler)
+    def post(self, request, *args, **kwargs):
+        user = request.user
+        if (
+            user.identity_verification_status
+            == IdentityVerificationStatusOption.VERIFIED
+        ):
+            return Response(
+                {"message": "Already verified"}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        serializer = UserLiveVerificationSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        event_type = NotificationEventTypeOption.USER_VERIFICATION
+        user_notification = create_notification(
+            event_type=event_type,
+            data={
+                "identifier": str(user.id),
+                "message": f"Thank you ! Your submission for identity verification is currently under review",
+                "link": f"/profile/verify-profile",
+            },
+            n_type=NotificationTypeOption.USER_NOTIFICATION,
+            user_id=user.id,
+        )
+
+        admin_notification = create_notification(
+            event_type=event_type,
+            data={
+                "identifier": str(user.id),
+                "message": f"A new submission for identity verification from {user.get_full_name()}.",
+                "link": f"/user/{user.id}/edit",
+            },
+            n_type=NotificationTypeOption.ADMIN_NOTIFICATION,
+        )
+        notification_data = [
+            user_notification,
+            admin_notification,
+        ]
+
+        user.identity_verification_images = {
+            "live": request.data["image"],
+        }
+        user.identity_verification_method = request.data["document_type"]
+        user.identity_verification_status = IdentityVerificationStatusOption.PENDING
+        with transaction.atomic():
+            user.save()
+            Notification.objects.bulk_create(
+                [Notification(**item) for item in notification_data]
+            )
+
+        send_notification(notification_data=notification_data)
+        return Response(
+            {"message": "Successfully submitted"}, status=status.HTTP_200_OK
+        )
+
