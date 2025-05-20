@@ -108,6 +108,13 @@ class Listing(BaseModel):
     total_booking_count = models.PositiveIntegerField(default=0)
     location = PointField(default=Point(0, 0))
 
+    district = models.CharField(blank=True)
+    division = models.CharField(blank=True)
+
+    area = models.CharField(blank=True)
+    city = models.CharField(blank=True)
+
+
     instant_booking_allowed = models.BooleanField(default=False)
     require_guest_good_track_record = models.BooleanField(default=False)
 

@@ -17,10 +17,14 @@ User = get_user_model()
 
 class GuestBookingProcess:
     def __call__(self, request_data: dict, user) -> dict:
+
+
         current_date = Date.today()
 
         listing_id = request_data["listing"]
         listing_obj = Listing.objects.get(id=listing_id)
+
+        print(listing_id, " listing id")
 
         from_date = datetime.strptime(request_data["check_in"], "%Y-%m-%d").date()
         to_date = datetime.strptime(request_data["check_out"], "%Y-%m-%d").date()
@@ -116,9 +120,6 @@ class GuestBookingProcess:
             result_data.append(current_group)
 
         data["calendar_info"] = result_data
-
-        data["is_test_booking"] = request_data.get("test_booking", False) is True
-
         return {"status": 200, "message": "ok", "data": data}
 
 

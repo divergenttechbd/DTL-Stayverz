@@ -4,11 +4,13 @@ from django.db.models import F
 from django.db import IntegrityError
 from django.http import HttpResponsePermanentRedirect
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from django.utils.decorators import method_decorator
 from rest_framework import status
 from rest_framework.generics import CreateAPIView, views
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from accounts.serializers import UserSerializer
 
@@ -244,3 +246,162 @@ class PaymentRedirectAPIView(views.APIView):
         return HttpResponsePermanentRedirect(
             f"{settings.FRONTEND_BASE_URL}/checkout/{kwargs.get('status')}/{kwargs.get('invoice_no')}"
         )
+
+
+class DevelopmentPaymentBypassView(APIView):
+    permission_classes = (IsAuthenticated,)
+
+    def post(self, request, *args, **kwargs):
+        """
+        Bypass payment system for development environment.
+        Mark a booking as paid without going through payment gateway.
+
+        Required parameters:
+        - booking_invoice_no: The invoice number of the booking to mark as paid
+        """
+        # Check if we're in development environment
+        if not settings.DEBUG:
+            return Response(
+                {"message": "This endpoint is only available in development environment"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        # Get booking invoice number from request
+        booking_invoice_no = request.data.get("booking_invoice_no")
+        if not booking_invoice_no:
+            return Response(
+                {"message": "booking_invoice_no is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Get booking object
+        booking = get_object_or_404(Booking, invoice_no=booking_invoice_no)
+
+        # Check if payment is already done
+        if booking.guest_payment_status == PaymentStatusOption.PAID:
+            return Response(
+                {"message": "Payment already done for this booking"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Generate transaction and reservation codes
+        transaction_number = identifier_builder(
+            table_name="payments_onlinepayment", prefix="DEV_PGDBK"
+        )
+        reservation_code = identifier_builder(
+            table_name="bookings_booking", prefix="DEV_RES"
+        )
+
+        # Create payment record
+        payment_data = {
+            "payment_method": OnlinePaymentMethodOption.SSL_COMMERZ,
+            "user": booking.guest,  # Pass the user object instead of just the ID
+            "amount": booking.total_price,
+            "status": OnlinePaymentStatusOption.COMPLETED,
+            "transaction_number": transaction_number,
+            "booking": booking,  # Pass the booking object instead of just the ID
+            "meta": {
+                "dev_payment_bypass": True,
+                "bypassed_by": request.user.username,
+                "bypassed_at": str(timezone.now()),
+            },
+            "has_hit_ipn": True,
+        }
+
+        try:
+            with transaction.atomic():
+                # Create payment record
+                # Fix: Pass the booking object instead of just the ID
+                payment_data["booking"] = booking
+                online_payment = OnlinePayment.objects.create(**payment_data)
+
+                # Update booking details
+                booking.pgw_transaction_number = transaction_number
+                booking.reservation_code = reservation_code
+                booking.guest_payment_status = PaymentStatusOption.PAID
+                booking.status = BookingStatusOption.CONFIRMED
+                booking.paid_amount = online_payment.amount
+
+                # Prepare booking data for calendar
+                booking_data = {
+                    "user": UserSerializer(
+                        booking.guest,
+                        fields=[
+                            "id",
+                            "full_name",
+                            "image",
+                            "u_type",
+                            "phone_number",
+                            "email",
+                        ],
+                    ).data,
+                    "booking": BookingSerializer(
+                        booking, fields=["id", "invoice_no", "reservation_code"]
+                    ).data,
+                }
+
+                # Update listing calendar
+                for entry in booking.calendar_info:
+                    start_date = entry["start_date"]
+                    end_date = entry["end_date"]
+
+                    defaults = {
+                        "base_price": entry["base_price"],
+                        "custom_price": entry["price"],
+                        "is_blocked": entry["is_blocked"],
+                        "is_booked": entry["is_booked"],
+                        "booking_data": booking_data,
+                    }
+
+                    obj, created = ListingCalendar.objects.update_or_create(
+                        listing_id=entry["listing_id"],
+                        start_date=start_date,
+                        end_date=end_date,
+                        defaults=defaults,
+                    )
+
+                    entry["id"] = obj.id
+
+                # Update listing booking count
+                Listing.objects.filter(id=booking.listing_id).update(
+                    total_booking_count=F("total_booking_count") + 1
+                )
+
+                # Update host stats
+                host = booking.host
+                host.total_sell_amount = host.total_sell_amount + booking.paid_amount
+                host.save()
+
+                # Save booking changes
+                booking.save()
+
+                # Trigger booking confirmation process
+                booking_confirmed_process.delay(booking_id=booking.id)
+
+                # Send SMS notifications (optional for dev environment)
+                # if settings.:
+                #     send_sms(
+                #         username=booking.guest.phone_number,
+                #         message="Congratulations! You've successfully completed your booking",
+                #     )
+                #     send_sms(
+                #         username=host.phone_number,
+                #         message="Congratulations! A guest booked your property just now",
+                #     )
+
+                return Response(
+                    {
+                        "message": "Payment bypassed successfully in development environment",
+                        "booking_id": booking.id,
+                        "invoice_no": booking.invoice_no,
+                        "reservation_code": booking.reservation_code,
+                        "transaction_number": transaction_number,
+                    },
+                    status=status.HTTP_200_OK,
+                )
+
+        except Exception as e:
+            return Response(
+                {"message": f"Error bypassing payment: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )

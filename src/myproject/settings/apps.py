@@ -26,14 +26,15 @@ LOCAL_APPS = [
     "accounts",
     "listings",
     "wishlists",
-    "bookings",
+
     "payments",
     "configurations",
     "blogs",
     "notifications",
     "coupons",
     'quick_reply',
-    'referrals'
+    'referrals',
+    'bookings.apps.BookingsConfig'
 ]
 
 INSTALLED_APPS = ON_TOP_APPS + DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS

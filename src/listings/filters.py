@@ -50,6 +50,8 @@ class PublicListingFilter(filters.FilterSet):
 class ListingFilter(filters.FilterSet):
     created_at = filters.DateFromToRangeFilter()
 
+    district__in = CharacterInFilter(field_name="district", lookup_expr="in")
+
     deleted_status = filters.ChoiceFilter(
         method='filter_deleted_status',
         choices=(
@@ -62,7 +64,7 @@ class ListingFilter(filters.FilterSet):
 
     class Meta:
         model = Listing
-        fields = ("category", "status", "verification_status", "created_at", "host", "deleted_status")
+        fields = ("category", "status", "verification_status", "created_at", "host", "deleted_status", "district__in")
 
     def __init__(self, data=None, *args, **kwargs):
         # If 'deleted_status' is not provided, set it to 'active' by default

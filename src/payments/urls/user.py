@@ -3,7 +3,7 @@ from django.urls import path
 from payments.views.user import (
     UserSSLCommerzOrderPaymentView,
     CustomerSSLCommerzIPNView,
-    PaymentRedirectAPIView,
+    PaymentRedirectAPIView, DevelopmentPaymentBypassView,
 )
 
 app_name = "user"
@@ -23,5 +23,11 @@ urlpatterns = [
         "booking/<str:status>/<str:invoice_no>/",
         PaymentRedirectAPIView.as_view(),
         name="payment_redirect",
+    ),
+
+    path(
+        "development/bypass/",
+        DevelopmentPaymentBypassView.as_view(),
+        name="development-payment-bypass",
     ),
 ]

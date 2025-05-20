@@ -26,6 +26,7 @@ class UserChatApiView(views.APIView):
     swagger_tags = ["User Chat"]
 
     def post(self, request, *args, **kwargs):
+        print(request)
         current_date = date.today()
         listing_id = request.data["listing"]
         to_user_id = request.data["to_user"]

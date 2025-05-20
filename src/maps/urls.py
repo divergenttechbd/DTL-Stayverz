@@ -2,7 +2,7 @@ from django.urls import path
 from maps.views import (
     get_map_place_suggestions,
     get_place_info_by_id,
-    get_address_by_lat_lng,
+    get_address_by_lat_lng, DistrictListAPIView,
 )
 
 app_name = "maps"
@@ -22,5 +22,11 @@ urlpatterns = [
         "addresses/",
         get_address_by_lat_lng,
         name="get_address_by_lat_lng",
+    ),
+
+    path(
+        "get-district-points/",
+        DistrictListAPIView.as_view(),
+        name="district_list",
     ),
 ]

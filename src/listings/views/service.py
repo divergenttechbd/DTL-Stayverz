@@ -81,6 +81,7 @@ class ListingCalendarDataProcess:
         listings = null_data + new_data
         formatted_data = {}
 
+        print("listing ----------- ", listings)
         for date_obj in date_range(from_date, to_date):
             date_str = str(date_obj)
             formatted_data[date_str] = {

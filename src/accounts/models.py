@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.contrib.postgres.fields import ArrayField
@@ -42,6 +44,13 @@ class User(AbstractUser, BaseModel):
     total_sell_amount = models.FloatField(default=0)
     wishlist_listings = ArrayField(models.PositiveBigIntegerField(), blank=True)
     points_balance = models.PositiveIntegerField(default=0, help_text="Points earned by guest users for spending and referrals.")
+
+    host_referral_credit_balance = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        help_text="Claimable credit balance for HOSTS from referrals"
+    )
 
     # avg_rating,
 

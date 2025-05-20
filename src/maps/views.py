@@ -1,11 +1,14 @@
 import json
 import requests
 from django.conf import settings
+from drf_yasg import openapi
+from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status
 from rest_framework.request import Request
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from base.cache.redis_cache import get_cache, set_cache
 
@@ -139,3 +142,75 @@ def get_address_by_lat_lng(request: Request) -> Response:
         return Response(data=response.json().get("place"), status=status.HTTP_200_OK)
     else:
         return Response(data=response.json(), status=status.HTTP_400_BAD_REQUEST)
+
+
+
+class DistrictListAPIView(APIView):
+    permission_classes = [AllowAny]
+    BARIKOI_URL = "https://barikoi.xyz/v2/api/districts"
+
+    @swagger_auto_schema(
+        manual_parameters=[
+            openapi.Parameter(
+                name="q",
+                in_=openapi.IN_QUERY,
+                description="District name (partial or full)",
+                required=True,
+                type=openapi.TYPE_STRING,
+                example="khulna",
+            )
+        ],
+        responses={200: openapi.Schema(
+            type=openapi.TYPE_ARRAY,
+            items=openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "id": openapi.Schema(type=openapi.TYPE_INTEGER),
+                    "name": openapi.Schema(type=openapi.TYPE_STRING),
+                    "center": openapi.Schema(
+                        type=openapi.TYPE_OBJECT,
+                        properties={
+                            "type": openapi.Schema(type=openapi.TYPE_STRING),
+                            "coordinates": openapi.Schema(
+                                type=openapi.TYPE_ARRAY, items=openapi.Items(type=openapi.TYPE_NUMBER)
+                            ),
+                        },
+                    ),
+                },
+            ),
+        )},
+    )
+    def get(self, request):
+        query = request.GET.get("q", "").strip()
+        if not query:
+            return Response(
+                {"detail": "Missing required query parameter `q`."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            r = requests.get(
+                self.BARIKOI_URL,
+                params={"q": query, "api_key": settings.BARIKOI_API_KEY},
+                timeout=5,
+            )
+            r.raise_for_status()
+        except requests.exceptions.RequestException as exc:
+            return Response(
+                {"detail": f"Upstream error: {exc}"},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        places = r.json().get("places", [])
+
+        # Convert the 'center' string into a dict
+        for place in places:
+            center_raw = place.get("center")
+            if isinstance(center_raw, str):
+                try:
+                    place["center"] = json.loads(center_raw)
+                except json.JSONDecodeError:
+                    # leave it as-is if it can’t be parsed
+                    pass
+
+        return Response(places, status=status.HTTP_200_OK)
