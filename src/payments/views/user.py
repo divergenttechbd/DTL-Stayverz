@@ -6,6 +6,7 @@ from django.http import HttpResponsePermanentRedirect
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
 from rest_framework import status
 from rest_framework.generics import CreateAPIView, views
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -35,6 +36,7 @@ from payments.views.service import (
 )
 
 
+@method_decorator(csrf_exempt, name='dispatch')
 class UserSSLCommerzOrderPaymentView(CreateAPIView):
     permission_classes = (IsAuthenticated,)
     serializer_class = OnlinePaymentSerializer
@@ -80,6 +82,9 @@ class UserSSLCommerzOrderPaymentView(CreateAPIView):
             "cancel_url": f"{settings.BACKEND_BASE_URL}/payments/user/booking/cancel/{booking.invoice_no}/",
         }
 
+
+        print(sslcommerz_data, " ----------- ")
+
         response = sslcommerz_payment_create(
             data=sslcommerz_data, customer=request.user
         )
@@ -114,7 +119,13 @@ class UserSSLCommerzOrderPaymentView(CreateAPIView):
 class CustomerSSLCommerzIPNView(views.APIView):
     permission_classes = (AllowAny,)
 
+
     def post(self, request):
+
+        print("=== IPN VIEW HIT ===")
+        print("Request Headers:", request.headers)
+        print("Request Body:", request.body.decode('utf-8'))
+
         try:
             if (
                 not request.data.get("tran_id")
@@ -131,6 +142,7 @@ class CustomerSSLCommerzIPNView(views.APIView):
             online_payment.has_hit_ipn = True
             booking = online_payment.booking
 
+            print(" --------------- ipn -------------------")
             if not request.data.get("status") == "VALID":
                 online_payment.status = OnlinePaymentStatusOption.CANCELLED
                 online_payment.meta = self.request.data

@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django.db import models
 from django.contrib.auth import get_user_model
 from base.models import BaseModel
@@ -59,6 +61,33 @@ class Booking(BaseModel):
     guest_review_done = models.BooleanField(default=False)
     calendar_info = models.JSONField(default=dict)
     chat_room_id = models.CharField(max_length=200, blank=True)
+
+    applied_coupon_code = models.CharField(max_length=50, null=True, blank=True, db_index=True)
+    applied_coupon_type = models.CharField(max_length=20, null=True, blank=True,
+                                           choices=[('referral', 'Referral Coupon'), ('admin', 'Admin Coupon')])
+
+    discount_amount_applied = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
+    price_after_discount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+
+    applied_referral_coupon = models.ForeignKey(
+        'referrals.Coupon',
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='used_in_bookings'
+    )
+
+    applied_admin_coupon = models.ForeignKey(
+        'coupons.Coupon',
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='used_in_bookings'
+    )
+
+    invoice_pdf = models.FileField(
+        upload_to='booking_invoices/',
+        null=True, blank=True
+    )
+    invoice_generated_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         verbose_name = "Booking"

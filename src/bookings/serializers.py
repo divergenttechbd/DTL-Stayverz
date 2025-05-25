@@ -3,7 +3,8 @@ from base.serializers import DynamicFieldsModelSerializer
 from base.type_choices import PaymentStatusOption, BookingStatusOption
 from bookings.models import Booking, ListingBookingReview
 from listings.serializers import ListingSerializer
-
+from rest_framework import serializers
+from decimal import Decimal
 
 class BookingSerializer(DynamicFieldsModelSerializer):
     class Meta:
@@ -93,3 +94,55 @@ class BookingReviewSerializer(DynamicFieldsModelSerializer):
                 "host",
             ],
         ).data
+
+
+class CouponCheckResponseSerializer(serializers.Serializer):
+    is_valid = serializers.BooleanField(
+        help_text="True if the coupon is valid and applicable, False otherwise."
+    )
+    message = serializers.CharField(
+        help_text="A human-readable message explaining the validation result (e.g., 'Coupon applied successfully.', 'Coupon has expired.')."
+    )
+    coupon_code = serializers.CharField(
+        allow_null=True, # Can be null if no valid coupon code was matched or input was empty
+        help_text="The coupon code that was validated (or attempted)."
+    )
+    coupon_type = serializers.CharField(
+        allow_null=True, # 'referral' or 'admin' if valid, otherwise null
+        help_text="Indicates if the coupon is a 'referral' or 'admin' type."
+    )
+    discount_amount = serializers.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        allow_null=True, # Null if coupon is not valid or no discount applies
+        help_text="The calculated discount amount in Taka (or your currency)."
+    )
+    original_price_for_discount_calc = serializers.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        allow_null=True, # Null if no order_total was provided for context
+        help_text="The order total that was used as the base for calculating the discount."
+    )
+    price_after_discount = serializers.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        allow_null=True, # Null if coupon is not valid
+        help_text="The calculated price after the discount is applied."
+    )
+    discount_display = serializers.CharField(
+        allow_null=True,
+        required=False, # Not always present
+        help_text="A user-friendly display of the discount (e.g., '10% off', '50 Taka off')."
+    )
+    # You could add more specific fields from the coupon object if the UI needs them, for example:
+    # description = serializers.CharField(allow_null=True, required=False)
+    # valid_to = serializers.DateTimeField(allow_null=True, required=False)
+    # threshold_amount = serializers.DecimalField(max_digits=10, decimal_places=2, allow_null=True, required=False)
+
+    def create(self, validated_data):
+        # This serializer is for output, so create is not applicable
+        raise NotImplementedError("This serializer is for output only.")
+
+    def update(self, instance, validated_data):
+        # This serializer is for output, so update is not applicable
+        raise NotImplementedError("This serializer is for output only.")

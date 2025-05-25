@@ -1,12 +1,20 @@
+import os
 from datetime import datetime, timedelta
+from decimal import InvalidOperation, Decimal
+
 from django.db import transaction
 from django.conf import settings
 from django.db.models import F
+from django.http import HttpResponse
 from django.utils.decorators import method_decorator
+from drf_yasg import openapi
+from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.generics import ListCreateAPIView, views
 from rest_framework.response import Response
+from rest_framework.views import APIView
+
 from accounts.tasks.users import send_sms
 from base.helpers.decorators import exception_handler
 from base.permissions import (
@@ -21,9 +29,10 @@ from base.type_choices import (
     UserTypeOption,
 )
 from base.mongo.connection import connect_mongo
+from bookings.coupon_service import validate_and_get_coupon_discount_info
 from bookings.filters import UserBookingFilter
 from bookings.models import Booking, ListingBookingReview
-from bookings.serializers import BookingReviewSerializer, BookingSerializer
+from bookings.serializers import BookingReviewSerializer, BookingSerializer, CouponCheckResponseSerializer
 from bookings.tasks.booking_cancel import booking_cancelled_process
 from bookings.views.service import BookingReviewProcess, GuestBookingProcess
 from configurations.models import ServiceCharge
@@ -31,7 +40,7 @@ from listings.models import Listing, ListingCalendar
 from notifications.models import Notification
 from notifications.utils import create_notification, send_notification
 
-
+from coupons.serializers import CouponValidateSerializer # Request serializer
 class GuestBookingListCreateAPIView(ListCreateAPIView):
     permission_classes = (IsAuthenticated, IsGuestUser)
     serializer_class = BookingSerializer
@@ -71,6 +80,82 @@ class GuestBookingListCreateAPIView(ListCreateAPIView):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
+
+class ValidateCouponAPIView(APIView):
+    permission_classes = [IsAuthenticated]  # User must be logged in to check a coupon, typically
+    swagger_tags = ["Coupons", "Bookings"]  # Add to relevant swagger tags
+
+    @swagger_auto_schema(
+        request_body=CouponValidateSerializer,
+        operation_summary="Validate a coupon code",
+        operation_description="Checks if a given coupon code is valid for an optional order total and returns discount information.",
+        responses={
+            200: CouponCheckResponseSerializer(),
+            400: openapi.Response("Bad Request (e.g., invalid input format)"),
+            # 404: openapi.Response("Coupon not found - handled by the service's message")
+        }
+    )
+    def post(self, request, *args, **kwargs):
+        serializer = CouponValidateSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        validated_data = serializer.validated_data
+        coupon_code_input = validated_data.get('code')
+        order_total_input = validated_data.get('order_total')  # This is optional in serializer
+
+        # The service expects a Decimal order_total. Default to 0 if not provided for validation context.
+        # Some coupons might not require an order_total for basic validity check (e.g. existence, expiry).
+        order_total_decimal = order_total_input if order_total_input is not None else Decimal('0.00')
+
+        # Ensure order_total_decimal is indeed a Decimal for the service
+        if not isinstance(order_total_decimal, Decimal):
+            try:
+                order_total_decimal = Decimal(str(order_total_decimal))
+            except InvalidOperation:
+                return Response({"order_total": ["Invalid amount for order total."]},
+                                status=status.HTTP_400_BAD_REQUEST)
+
+        coupon_info = validate_and_get_coupon_discount_info(
+            coupon_code_input=coupon_code_input,
+            order_total=order_total_decimal,
+            booking_user=request.user  # Pass the authenticated user
+        )
+
+
+        print(" ---------- ", coupon_info, " ------------ ")
+
+        response_data = {
+            "is_valid": coupon_info['is_valid'],
+            "message": coupon_info['message'],
+            "coupon_code": (coupon_info.get('coupon_code_matched', coupon_code_input) if coupon_info.get('is_valid') else coupon_code_input),
+            "coupon_type": coupon_info['coupon_type'] if coupon_info['is_valid'] else None,
+            "discount_amount": coupon_info['discount_amount'] if coupon_info['is_valid'] else None,
+            "original_price_for_discount_calc": order_total_input if order_total_input is not None else None,
+            "price_after_discount": coupon_info['final_price'] if coupon_info['is_valid'] else None,
+            "discount_display": None
+        }
+
+        if coupon_info['is_valid'] and coupon_info['coupon_object']:
+            coupon_obj = coupon_info['coupon_object']
+            if coupon_info['coupon_type'] == 'admin':
+                # coupon_obj is an AdminConfiguredCoupon instance
+                if coupon_obj.discount_type == 'PERCENT':
+                    response_data['discount_display'] = f"{coupon_obj.discount_value}%"
+                elif coupon_obj.discount_type == 'FIXED':
+                    response_data['discount_display'] = f"{coupon_obj.discount_value} Taka"  # Or your currency
+            elif coupon_info['coupon_type'] == 'referral':
+                # coupon_obj is a ReferralGeneratedCoupon instance
+                response_data['discount_display'] = f"{coupon_obj.amount} Taka"  # Or your currency
+
+        response_serializer = CouponCheckResponseSerializer(data=response_data)
+        if response_serializer.is_valid():  # Should be valid as we constructed it
+            return Response(response_serializer.data, status=status.HTTP_200_OK)
+        else:
+            # This case is unlikely if response_data is constructed correctly
+            # but good to have for debugging serializer issues.
+            print("Error in CouponCheckResponseSerializer:", response_serializer.errors)
+            return Response(response_data, status=status.HTTP_200_OK)
 class GuestBookingRetrieveAPIView(views.APIView):
     permission_classes = (IsAuthenticated, IsGuestUser)
     swagger_tags = ["Gust Bookings"]
@@ -106,6 +191,12 @@ class GuestBookingRetrieveAPIView(views.APIView):
                 "adult_count",
                 "children_count",
                 "infant_count",
+                'applied_coupon_code',
+                'applied_coupon_type',
+                'discount_amount_applied',
+                'price_after_discount',
+                'applied_admin_coupon',
+                'applied_referral_coupon'
             ],
         ).data
 
@@ -233,7 +324,7 @@ class GuestBookingReviewRetrieveAPIView(views.APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        data = BookingReviewSerializer(booking_review, many=False), data
+        data = BookingReviewSerializer(booking_review, many=False)
         return Response(data, status=status.HTTP_200_OK)
 
 
@@ -313,3 +404,29 @@ class GuestBookingCancelAPIView(views.APIView):
         return Response(
             {"message": "Booking cancellation done"}, status=status.HTTP_200_OK
         )
+
+
+
+class DownloadInvoiceAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+    swagger_tags = ["Bookings", "Invoices"]
+
+    def get(self, request, invoice_no, *args, **kwargs):
+        try:
+            booking = Booking.objects.get(invoice_no=invoice_no)
+            if not (request.user == booking.guest or request.user == booking.host or request.user.is_staff):
+                return Response({"message": "Permission denied."}, status=status.HTTP_403_FORBIDDEN)
+
+            if booking.invoice_pdf and booking.invoice_pdf.name:
+
+                response = HttpResponse(booking.invoice_pdf, content_type='application/pdf')
+                response['Content-Disposition'] = f'attachment; filename="{os.path.basename(booking.invoice_pdf.name)}"'
+
+                return response
+            else:
+                return Response({"message": "Invoice not yet generated or available."}, status=status.HTTP_404_NOT_FOUND)
+        except Booking.DoesNotExist:
+            return Response({"message": "Booking not found."}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            print(f"Error serving invoice {invoice_no}: {e}")
+            return Response({"message": "Error serving invoice."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

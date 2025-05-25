@@ -6,7 +6,7 @@ from accounts.views.user import (
     UserReviewListApi,
     UserUnreadMessageCountAPIView,
     logout,
-    mobile_login, UserSelfieVerificationAPIView,
+    mobile_login, UserSelfieVerificationAPIView, SuperhostProgressAPIView,
 )
 from django.urls import path
 
@@ -50,4 +50,5 @@ urlpatterns = [
         mobile_login,
         name="mobile_login",
     ),
+    path('superhost-progress/<int:host_id>/', SuperhostProgressAPIView.as_view(), name='superhost_progress'),
 ]

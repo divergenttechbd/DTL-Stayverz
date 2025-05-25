@@ -1,10 +1,16 @@
+import django_filters
 from django.db.models.functions import Coalesce
 from rest_framework import serializers
 from django.db.models import Sum
 from decimal import Decimal
 from django.conf import settings
 
-from .models import Referral, ReferralReward, Coupon, RewardStatus, ReferralType, CouponStatus
+from accounts.models import User
+from bookings.models import Booking
+from listings.models import Listing
+from .models import Referral, ReferralReward, Coupon, RewardStatus, ReferralType, CouponStatus, UserTypeOption
+
+
 # Assuming your User model is from settings.AUTH_USER_MODEL and you have a UserSerializer
 # from accounts.serializers import UserSerializer # Adjust path as needed
 # For this example, I'll define a placeholder UserSerializer
@@ -172,3 +178,237 @@ class GuestPointsBalanceSerializer(serializers.Serializer): # For Guest Points B
     points_needed_for_coupon = serializers.IntegerField()
     can_claim_coupon = serializers.BooleanField()
     coupon_value_on_claim = serializers.DecimalField(max_digits=10, decimal_places=2, help_text="Value in Taka of the coupon generated from points.")
+
+#
+class UserBriefSerializer(serializers.Serializer):
+    id = serializers.IntegerField(read_only=True)
+    username = serializers.CharField(read_only=True)
+    full_name = serializers.CharField(read_only=True, source='get_full_name', allow_null=True)
+    u_type = serializers.CharField(read_only=True)
+    image = serializers.URLField(read_only=True, allow_null=True)
+
+
+
+# ---------------------------------
+
+
+class BasicUserSerializer(serializers.ModelSerializer):
+    full_name = serializers.SerializerMethodField()
+    image_url = serializers.SerializerMethodField(method_name='get_user_image_url')
+
+    class Meta:
+        model = User
+        fields = ('id', 'username', 'email', 'full_name', 'u_type', 'image_url')
+
+    def get_full_name(self, obj: User) -> str:
+        # AbstractUser provides get_full_name(), first_name, last_name
+        name_from_method = obj.get_full_name()
+        if name_from_method and name_from_method.strip() and name_from_method != obj.email:
+            return name_from_method
+        if obj.first_name or obj.last_name:  # These are direct fields on User
+            return f"{obj.first_name} {obj.last_name}".strip()
+        return obj.username
+
+    def get_user_image_url(self, obj: User):
+        # User model has 'image' URLField directly
+        if obj.image:  # This is obj.image from User model
+            request = self.context.get('request')
+            if request:
+                try:
+                    # If obj.image might be relative
+                    return request.build_absolute_uri(obj.image)
+                except ValueError:  # If obj.image is already absolute
+                    return obj.image
+            return obj.image  # Fallback if no request context
+        return None
+
+
+
+class MinimalListingSerializer(serializers.ModelSerializer): # Renamed for clarity
+    host_username = serializers.CharField(source='host.username', read_only=True, allow_null=True)
+
+    class Meta:
+        model = Listing # Directly use your Listing model
+        fields = (
+            'id',
+            'unique_id', # A good unique identifier for listings
+            'title',
+            'cover_photo',
+            'host_username', # To show who owns the listing
+            'address',
+            'city',
+            'area',
+        )
+
+# -------------------------
+class MinimalPropertySerializer(serializers.ModelSerializer):  # If Property has a name
+    class Meta:
+        # Replace 'Property' with your actual Property model name
+        # from properties.models import Property # Example import
+        model = None  # Placeholder - YOU MUST REPLACE THIS WITH YOUR ACTUAL PROPERTY MODEL
+        fields = ('id', 'name')  # Example: Property name
+
+    def __init__(self, *args, **kwargs):
+        # This is a simple way to handle if the model isn't set, to avoid import errors
+        # during initial setup if Property model is in another app not yet fully loaded.
+        # In a real setup, ensure your Property model is correctly imported and set.
+        if self.Meta.model is None:
+            try:
+                from properties.models import Property  # Adjust import path
+                self.Meta.model = Property
+            except ImportError:
+                # Log or print a warning that Property model couldn't be imported
+                print(
+                    "Warning: Property model for MinimalPropertySerializer not found. Booking property details will be limited.")
+        super().__init__(*args, **kwargs)
+
+
+class MinimalBookingSerializer(serializers.ModelSerializer):
+    listing_details = MinimalListingSerializer(source='listing', read_only=True, allow_null=True) # Use source='listing'
+    guest_username = serializers.CharField(source='guest.username', read_only=True, allow_null=True)
+
+    class Meta:
+        model = Booking # Directly use your Booking model
+        fields = (
+            'id',
+            'invoice_no', # A good unique ID for bookings
+            'check_in',   # Changed from check_in_date
+            'check_out',  # Changed from check_out_date
+            'total_price',# Changed from total_amount
+            'status',     # Booking status
+            'guest_username',
+            'listing_details',
+        )
+
+    def __init__(self, *args, **kwargs):
+        if self.Meta.model is None:
+            try:
+                from bookings.models import Booking  # Adjust import path for your Booking model
+                self.Meta.model = Booking
+            except ImportError:
+                print("Warning: Booking model for MinimalBookingSerializer not found. Booking details will be limited.")
+        super().__init__(*args, **kwargs)
+
+
+
+class AdminReferredUserSerializer(BasicUserSerializer):
+    class Meta(BasicUserSerializer.Meta):
+        fields = ('id', 'username', 'full_name', 'u_type', 'image_url')
+
+
+class AdminReferralRewardDetailSerializer(serializers.ModelSerializer):
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    claimed_coupon_code = serializers.CharField(source='claimed_coupon.code', read_only=True, allow_null=True)
+    reward_interpretation = serializers.SerializerMethodField()
+    booking_pk = serializers.IntegerField(source='booking.pk', read_only=True, allow_null=True)
+    reward_recipient = BasicUserSerializer(source='user', read_only=True)
+
+    booking_details = MinimalBookingSerializer(source='booking', read_only=True, allow_null=True)
+
+    class Meta:
+        model = ReferralReward
+        fields = (
+            'id',
+            'reward_recipient',
+            'amount',
+            'reward_interpretation',
+            'status',
+            'status_display',
+            'booking_pk',
+            'booking_details',
+            'claimed_coupon_code',
+            'created_at'
+        )
+
+    def get_reward_interpretation(self, obj: ReferralReward):
+        if obj.referral.referral_type == ReferralType.HOST_TO_HOST:
+            return f"{obj.amount} Taka (Commission)"
+        elif obj.referral.referral_type == ReferralType.GUEST_TO_GUEST:
+            return f"{int(obj.amount)} Points" # Assuming points are stored in 'amount'
+        return str(obj.amount)
+
+class AdminReferralInstanceDetailSerializer(serializers.ModelSerializer):
+    referred_user_details = AdminReferredUserSerializer(source='referred_user', read_only=True, allow_null=True)
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    referral_type_display = serializers.CharField(source='get_referral_type_display', read_only=True)
+    # 'rewards' is the related_name from ReferralReward.referral back to Referral
+    rewards_associated = AdminReferralRewardDetailSerializer(many=True, source='rewards', read_only=True)
+
+    class Meta:
+        model = Referral
+        fields = (
+            'id',
+            'referral_code',
+            'referral_type',
+            'referral_type_display',
+            'status',
+            'status_display',
+            'referred_user_details',
+            'rewarded_booking_count',
+            'max_rewardable_bookings',
+            'is_active_for_rewards', # Property from model
+            'rewards_associated',
+            'created_at',
+        )
+
+# Serializer for the list view (AdminReferrerReportListView)
+class AdminReferrerSummarySerializer(BasicUserSerializer):
+    total_host_referrals_made = serializers.IntegerField(read_only=True, default=0)
+    total_host_referrals_successful = serializers.IntegerField(read_only=True, default=0)
+    total_host_referral_earnings = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True, default=Decimal('0.00'))
+
+    total_guest_referrals_made = serializers.IntegerField(read_only=True, default=0)
+    total_guest_referrals_successful = serializers.IntegerField(read_only=True, default=0)
+    total_guest_referral_points = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True, default=Decimal('0.00'))
+
+    class Meta(BasicUserSerializer.Meta):
+        fields = BasicUserSerializer.Meta.fields + (
+            'total_host_referrals_made',
+            'total_host_referrals_successful',
+            'total_host_referral_earnings',
+            'total_guest_referrals_made',
+            'total_guest_referrals_successful',
+            'total_guest_referral_points'
+        )
+
+# Serializer for the detail view (AdminReferrerDetailReportView)
+class AdminReferrerFullDetailSerializer(BasicUserSerializer):
+    # Aggregated earnings/points for this specific user
+    summary_total_host_referral_earnings = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True, source='annotated_total_host_earnings')
+    summary_total_guest_referral_points = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True, source='annotated_total_guest_points')
+
+    # Detailed list of referrals made by this user
+    # 'referrals_made' is the related_name from Referral.referrer back to User
+    referral_links_details = AdminReferralInstanceDetailSerializer(many=True, read_only=True, source='referrals_made')
+
+    class Meta(BasicUserSerializer.Meta):
+        fields = BasicUserSerializer.Meta.fields + (
+            'summary_total_host_referral_earnings',
+            'summary_total_guest_referral_points',
+            'referral_links_details',
+        )
+
+
+# --- Admin Report Filters ---
+
+class AdminReferrerFilter(django_filters.FilterSet):
+    referral_type = django_filters.ChoiceFilter(
+        choices=ReferralType.choices,
+        method='filter_by_referral_type',
+        label='Referral Type (Filters users who made this type of referral)'
+    )
+    username = django_filters.CharFilter(field_name='username', lookup_expr='icontains', label='Referrer Username')
+    email = django_filters.CharFilter(field_name='email', lookup_expr='icontains', label='Referrer Email')
+
+
+    class Meta:
+        model = User
+        fields = ['username', 'email', 'referral_type', 'u_type'] # Added u_type for direct filtering
+
+    def filter_by_referral_type(self, queryset, name, value):
+        if value:
+            return queryset.filter(referrals_made__referral_type=value).distinct()
+        return queryset
+
+
+

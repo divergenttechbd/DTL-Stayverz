@@ -1,4 +1,5 @@
 import os
+from decimal import Decimal
 
 from myproject.settings import BASE_DIR
 
@@ -82,3 +83,6 @@ MONGO_DB = os.environ.get("MONGO_DB")
 
 
 FCM_SERVER_KEY_PATH = os.environ.get("FCM_SERVER_KEY_PATH")
+
+LIFETIME_REFERRAL_EARNINGS_CAP_POINTS = 10000
+LIFETIME_REFERRAL_EARNINGS_CAP_TAKA = Decimal('10000.00')

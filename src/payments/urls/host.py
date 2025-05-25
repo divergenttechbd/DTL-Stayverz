@@ -4,7 +4,7 @@ from payments.views.host import (
     HostPayMethodListCreateAPIView,
     HostPayMethodRetrieveUpdateAPIView,
     HostPaymentListAPIView,
-    HostPaymentDetailAPIView,
+    HostPaymentDetailAPIView, HostFinanceReportAPIView,
 )
 
 app_name = "host"
@@ -30,4 +30,6 @@ urlpatterns = [
         HostPaymentDetailAPIView.as_view(),
         name="payment_retrieve",
     ),
+
+    path('host/finance-report/', HostFinanceReportAPIView.as_view(), name='host-finance-report'),
 ]

@@ -1,26 +1,29 @@
-# referrals/views.py
 from django.contrib.auth import get_user_model
 from django.db import transaction
-from django.db.models import Sum, Q, F  # Added F
+from django.db.models import Sum, Q, F, OuterRef, Count, Subquery, Prefetch, DecimalField  # Added F
 from django.db.models.functions import Coalesce
+
 from django.utils import timezone
 from decimal import Decimal
 from django.conf import settings
+from django_filters.rest_framework import DjangoFilterBackend
 
 from rest_framework import generics, views, status, serializers
+from rest_framework.filters import SearchFilter, OrderingFilter
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi  # For swagger documentation
 
 
 from .models import Referral, ReferralReward, Coupon, RewardStatus, CouponStatus, ReferralStatus, ReferralType
-from .serilizers import (  # Assuming serializers.py is in the same app
+from .serilizers import (
     ReferralSerializer,
     ReferralRewardSerializer,
     CouponSerializer,
     CreditBalanceSerializer,
-    GuestPointsBalanceSerializer  # Make sure this is defined in serializers.py
+    GuestPointsBalanceSerializer, UserSerializer, AdminReferrerFullDetailSerializer,
+    AdminReferrerSummarySerializer, AdminReferrerFilter
 )
 
 from base.type_choices import UserTypeOption  # Adjust import as per your project structure
@@ -363,3 +366,135 @@ class ClaimGuestPointsCouponAPIView(views.APIView):
 
         serializer = CouponSerializer(coupon)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class AdminReferrerReportListView(generics.ListAPIView):
+    """
+    Admin report listing all users who have made referrals.
+    Provides aggregated statistics for their referral activities.
+    Supports filtering by referral type (Host-to-Host / Guest-to-Guest),
+    username, email, and user type.
+    """
+    permission_classes = [IsAdminUser]
+    serializer_class = AdminReferrerSummarySerializer
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = AdminReferrerFilter
+    swagger_tags = ["Referrals - Admin Reports"]
+
+    @swagger_auto_schema(
+        operation_description="Lists referrers with aggregated data. Filter by 'referral_type' (host_to_host, guest_to_guest), 'username', 'email', 'u_type'.",
+    )
+    def get_queryset(self):
+        successful_statuses = [ReferralStatus.SIGNED_UP, ReferralStatus.HOST_ACTIVE, ReferralStatus.COMPLETED]
+
+        # --- Annotations for Host Referrals ---
+        host_ref_made_count = Count('referrals_made', filter=Q(referrals_made__referral_type=ReferralType.HOST_TO_HOST))
+
+        host_successful_ref_count = Count('referrals_made', filter=Q(
+            referrals_made__referral_type=ReferralType.HOST_TO_HOST,
+            referrals_made__status__in=successful_statuses
+        ))
+
+        host_earnings_sum = Sum(
+            'referral_rewards_earned__amount',  # 'referral_rewards_earned' is User.referral_rewards_earned.related_name
+            filter=Q(
+                referral_rewards_earned__referral__referral_type=ReferralType.HOST_TO_HOST
+                # Consider filtering by ReferralReward.status if not all amounts are "earned"
+            ),
+            output_field=DecimalField()
+        )
+
+        # --- Annotations for Guest Referrals ---
+        guest_ref_made_count = Count('referrals_made',
+                                     filter=Q(referrals_made__referral_type=ReferralType.GUEST_TO_GUEST))
+
+        guest_successful_ref_count = Count('referrals_made', filter=Q(
+            referrals_made__referral_type=ReferralType.GUEST_TO_GUEST,
+            referrals_made__status__in=successful_statuses
+        ))
+
+        guest_points_sum = Sum(
+            'referral_rewards_earned__amount',
+            filter=Q(
+                referral_rewards_earned__referral__referral_type=ReferralType.GUEST_TO_GUEST
+            ),
+            output_field=DecimalField()  # Assuming points stored as Decimal in ReferralReward.amount
+        )
+
+        queryset = User.objects.annotate(
+            total_host_referrals_made=Coalesce(host_ref_made_count, 0),
+            total_host_referrals_successful=Coalesce(host_successful_ref_count, 0),
+            total_host_referral_earnings=Coalesce(host_earnings_sum, Decimal('0.00')),
+
+            total_guest_referrals_made=Coalesce(guest_ref_made_count, 0),
+            total_guest_referrals_successful=Coalesce(guest_successful_ref_count, 0),
+            total_guest_referral_points=Coalesce(guest_points_sum, Decimal('0.00'))
+        ).select_related().order_by('-date_joined')  # Or any other default ordering
+
+        # By default, only show users who have made at least one referral,
+        # unless a specific filter (like username/email) is applied that might target any user.
+        # The referral_type filter in AdminReferrerFilter already ensures this for that specific filter.
+        # If no referral_type filter, we might want to show only actual referrers.
+
+        # If no specific referral type filter is applied, ensure we are listing actual referrers
+        referral_type_param = self.request.query_params.get('referral_type')
+        if not referral_type_param:  # If the specific referral_type filter is not used
+            queryset = queryset.filter(
+                Q(total_host_referrals_made__gt=0) | Q(total_guest_referrals_made__gt=0)
+            ).distinct()
+        # If referral_type_param is present, the filterset's method `filter_by_referral_type` handles it.
+
+        return queryset
+
+
+class AdminReferrerDetailReportView(generics.RetrieveAPIView):
+    """
+    Admin report showing detailed referral activity for a specific user (referrer).
+    Includes all referral links generated, connected referred users,
+    and detailed earning/reward information for each referral.
+    """
+    permission_classes = [IsAdminUser]
+    serializer_class = AdminReferrerFullDetailSerializer
+    lookup_field = 'pk'  # User ID
+    swagger_tags = ["Referrals - Admin Reports"]
+
+    @swagger_auto_schema(
+        operation_description="Retrieves detailed referral report for a specific referrer by their User ID.",
+    )
+    def get_queryset(self):
+        host_earnings_sum_subquery = Sum(
+            'referral_rewards_earned__amount',
+            filter=Q(referral_rewards_earned__referral__referral_type=ReferralType.HOST_TO_HOST),
+            output_field=DecimalField()
+        )
+
+        guest_points_sum_subquery = Sum(
+            'referral_rewards_earned__amount',
+            filter=Q(referral_rewards_earned__referral__referral_type=ReferralType.GUEST_TO_GUEST),
+            output_field=DecimalField()
+        )
+
+        return User.objects.annotate(
+            annotated_total_host_earnings=Coalesce(host_earnings_sum_subquery, Decimal('0.00')),
+            annotated_total_guest_points=Coalesce(guest_points_sum_subquery, Decimal('0.00'))
+        ).prefetch_related(
+            Prefetch(
+                'referrals_made',
+                queryset=Referral.objects.select_related(
+                    'referred_user'
+                ).prefetch_related(
+                    Prefetch(
+                        'rewards',
+                        queryset=ReferralReward.objects.select_related(
+                            'user',  # User who received the reward
+                            'claimed_coupon',
+                            'booking',  # The Booking object itself
+                            'booking__guest',  # The guest User on the Booking
+                            'booking__listing',  # The Listing object related to the Booking
+                            'booking__listing__host'
+                            # The host User on the Listing, if used by MinimalListingSerializer
+                        ).order_by('-created_at')
+                    )
+                ).order_by('-created_at')
+            )
+        )

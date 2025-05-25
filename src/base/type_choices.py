@@ -116,6 +116,10 @@ class NotificationEventTypeOption(models.TextChoices):
     PAYOUT = "payout", "payout"
     SIGN_UP = "sign_up", "sign_up"
 
+    PRE_ARRIVAL = "pre_arrival", "Pre-Arrival Reminder"
+    POST_BOOKING_GUEST = "post_booking_guest", "Post-Booking Guest Feedback"
+    POST_BOOKING_HOST = "post_booking_host", "Post-Booking Host Feedback"
+
 
 class NotificationTypeOption(models.TextChoices):
     ADMIN_NOTIFICATION = "admin_notification", "admin_notification"

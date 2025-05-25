@@ -1,0 +1,13 @@
+Dear {% if booking.guest and booking.guest.get_full_name %}{{ booking.guest.get_full_name }}{% elif booking.guest %}{{ booking.guest.username }}{% else %}Valued Customer{% endif %},
+
+Thank you for staying with us via Stayverz!
+
+Please find attached the invoice for your recent booking:
+Reservation Code: {{ booking.reservation_code|default:"N/A" }}
+Property: {{ booking.listing.title|default:"N/A" }}
+Check-out Date: {{ booking.check_out|date:"d M Y" }}
+
+If you have any questions, please visit our support page at www.stayverz.com/support.
+
+Sincerely,
+The Stayverz Team

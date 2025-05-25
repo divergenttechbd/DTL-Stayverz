@@ -7,6 +7,8 @@ from myproject.settings.database import *  # noqa
 # from myproject.settings.logger import *  # noqa
 from myproject.settings.third_party import *  # noqa
 
+from myproject.settings.achievements import *
+
 from dotenv import load_dotenv
 import os
 load_dotenv()

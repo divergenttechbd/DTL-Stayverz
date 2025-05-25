@@ -8,7 +8,7 @@ from rest_framework.serializers import (
     ChoiceField,
     CharField,
 )
-from accounts.models import UserProfile
+from accounts.models import UserProfile, SuperhostStatusHistory
 from base.serializers import DynamicFieldsModelSerializer
 from base.type_choices import (
     IdentityVerificationStatusOption,
@@ -209,3 +209,36 @@ class UserDTLSerializer(Serializer):
     name = CharField(max_length=200)
     email = CharField()
     password = CharField(max_length=200)
+
+
+
+from rest_framework import serializers
+
+class SuperhostMetricDetailSerializer(serializers.Serializer):
+    current = serializers.FloatField()
+    required = serializers.FloatField()
+    met = serializers.BooleanField()
+    comparison = serializers.CharField(required=False, help_text="'lower_is_better' or implicitly 'higher_is_better'")
+
+class SuperhostTierProgressSerializer(serializers.Serializer):
+    tier_key = serializers.CharField()
+    name = serializers.CharField()
+    achieved = serializers.BooleanField()
+    progress_details = serializers.DictField(child=SuperhostMetricDetailSerializer())
+
+
+class SuperhostStatusHistorySerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = SuperhostStatusHistory
+        fields = [
+            'id',
+            'tier_key',
+            'tier_name', # Comes directly from the model
+            'assessment_period_start',
+            'assessment_period_end',
+            'status_achieved_on',
+            'metrics_snapshot',
+            'created_at'
+        ]
+

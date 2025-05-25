@@ -1,6 +1,9 @@
 from django.urls import path
 from . import views
 
+
+# from .views import AdminListReferralParticipantsAPIView
+
 app_name = "referrals"
 
 urlpatterns = [
@@ -17,4 +20,9 @@ urlpatterns = [
     # --- Guest Specific Referral Endpoints ---
     path('guest/points-balance/', views.MyGuestPointsBalanceAPIView.as_view(), name='my_guest_points_balance'),
     path('guest/claim-coupon/', views.ClaimGuestPointsCouponAPIView.as_view(), name='claim_guest_points_coupon'),
+
+
+
+path('admin/referral-reports/referrers/', views.AdminReferrerReportListView.as_view(), name='admin-referrer-report-list'),
+    path('admin/referral-reports/referrers/<int:pk>/', views.AdminReferrerDetailReportView.as_view(), name='admin-referrer-detail-report'),
 ]

@@ -1,9 +1,10 @@
 from bson import ObjectId
 from django.conf import settings
+from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.request import Request
-from rest_framework.generics import ListAPIView
+from rest_framework.generics import ListAPIView, get_object_or_404
 from rest_framework.views import APIView
 from rest_framework.decorators import api_view, permission_classes
 from django.db import transaction
@@ -12,17 +13,20 @@ from django.utils.decorators import method_decorator
 from rest_framework.response import Response
 from rest_framework import status
 
-from accounts.models import UserProfile
+from accounts.models import UserProfile, SuperhostStatusHistory
 from accounts.serializers import (
     ChangePasswordSerializer,
     HostGuestUserSerializer,
     UserIdentityVerificationSerializer,
     UserProfileSerializer, UserLiveVerificationSerializer,
+    SuperhostStatusHistorySerializer,
 )
+from accounts.services import get_superhost_progress
 from base.cache.redis_cache import delete_cache, set_cache
 from base.helpers.decorators import exception_handler
 from base.helpers.mongo_query import mongo_update_user
 from base.mongo.connection import connect_mongo
+from base.permissions import IsHostUser
 from base.type_choices import (
     IdentityVerificationStatusOption,
     ListingStatusOption,
@@ -487,3 +491,81 @@ class UserSelfieVerificationAPIView(APIView):
             {"message": "Successfully submitted"}, status=status.HTTP_200_OK
         )
 
+
+# class SuperhostProgressAPIView(APIView):
+#     permission_classes = [IsAuthenticated]
+#     swagger_tags = ["Superhost"]
+#
+#     @swagger_auto_schema(
+#         operation_summary="Get Superhost Program Progress",
+#         operation_description="Retrieves the host's current progress towards Superhost tiers based on recent activity.",
+#         responses={200: SuperhostOverallProgressSerializer()}
+#     )
+#     def get(self, request, host_id, *args, **kwargs):
+#         host = User.objects.get(id=host_id)
+#
+#         progress_data = get_superhost_progress(host)
+#
+#         serializer = SuperhostOverallProgressSerializer(data=progress_data)
+#         serializer.is_valid(raise_exception=True)
+#         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class SuperhostProgressAPIView(APIView):
+
+    permission_classes = [IsAuthenticated]  # Adjust permissions as needed
+
+    swagger_tags = ["Superhost", "Host Features"]
+
+    @swagger_auto_schema(
+        operation_summary="Get Host's Superhost Program Progress and Official History",
+        operation_description="Retrieves the host's current ongoing progress towards Superhost tiers for the active quarter, their officially awarded Superhost tier, and their quarterly assessment history.",
+    )
+    def get(self, request, host_id=None, *args, **kwargs):  # host_id from URL
+        target_host = None
+        if host_id:  # If an admin is checking for a specific host
+            # Add permission check here if only admins can specify host_id
+            if not request.user.is_staff:  # Example check
+                return Response({"message": "You do not have permission to view other hosts' progress."},
+                                status=status.HTTP_403_FORBIDDEN)
+            target_host = get_object_or_404(User, id=host_id, u_type=UserTypeOption.HOST)
+        elif hasattr(request.user, 'u_type') and request.user.u_type == UserTypeOption.HOST:  # Host checking their own
+            target_host = request.user
+        else:
+            return Response({"message": "Host not specified or user is not a host."},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        if not target_host:  # Should be caught by get_object_or_404 or the logic above
+            return Response({"message": "Host not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        # 1. Get current ONGOING progress (uses get_current_quarter_start_and_end_dates internally)
+        # get_superhost_progress now returns a dictionary that matches SuperhostOverallProgressSerializer
+        ongoing_progress_data_dict = get_superhost_progress(target_host)
+
+        # 2. Get official Superhost status history
+        history_queryset = SuperhostStatusHistory.objects.filter(host=target_host).order_by('-assessment_period_end',
+                                                                                            '-status_achieved_on')[
+                           :10]  # Limit for display
+        history_serializer = SuperhostStatusHistorySerializer(history_queryset, many=True)
+
+        # 3. Get currently awarded official tier name from User model
+        awarded_tier_name = None
+        if target_host.current_superhost_tier and hasattr(settings, 'SUPERHOST_TIERS'):
+            tier_info = settings.SUPERHOST_TIERS.get(target_host.current_superhost_tier)
+            if tier_info:
+                awarded_tier_name = tier_info.get('name', target_host.current_superhost_tier)
+
+        if not awarded_tier_name and target_host.current_superhost_tier:  # Fallback if name not in settings
+            awarded_tier_name = target_host.current_superhost_tier
+        elif not awarded_tier_name:
+            awarded_tier_name = "Not a Superhost"
+
+        response_data = {
+            'current_ongoing_progress': ongoing_progress_data_dict,  # This dict is already structured
+            'official_status_history': history_serializer.data,
+            'currently_awarded_official_tier_key': target_host.current_superhost_tier,
+            'currently_awarded_official_tier_name': awarded_tier_name,
+            'last_official_assessment_on': target_host.superhost_metrics_updated_at
+        }
+
+        return Response(response_data, status=status.HTTP_200_OK)

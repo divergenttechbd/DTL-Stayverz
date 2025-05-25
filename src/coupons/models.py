@@ -63,7 +63,7 @@ class Coupon(BaseModel):
             return False, "Coupon is not yet valid."
         if self.valid_to < now:
             return False, "Coupon has expired."
-        if self.uses_count >= self.max_uses:
+        if self.uses_count >= self.max_use:
             return False, "Coupon usage limit reached."
 
         if self.threshold_amount is not None and order_amount is not None:
