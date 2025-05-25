@@ -4,7 +4,8 @@ from payments.views.host import (
     HostPayMethodListCreateAPIView,
     HostPayMethodRetrieveUpdateAPIView,
     HostPaymentListAPIView,
-    HostPaymentDetailAPIView, HostFinanceReportAPIView,
+    HostPaymentDetailAPIView, HostFinanceReportAPIView, HostLast6MonthsPayoutBreakdownAPIView,
+    HostMonthlyEarningsDetailAPIView,
 )
 
 app_name = "host"
@@ -32,4 +33,11 @@ urlpatterns = [
     ),
 
     path('host/finance-report/', HostFinanceReportAPIView.as_view(), name='host-finance-report'),
+    path('host/payout-breakdown-last-6months/', HostLast6MonthsPayoutBreakdownAPIView.as_view(), name='host-payout-breakdown-6months'),
+
+    path(
+        'host/monthly-earnings-detail/<int:year>/<int:month>/',
+        HostMonthlyEarningsDetailAPIView.as_view(),
+        name='host-monthly-earnings-detail'
+    )
 ]

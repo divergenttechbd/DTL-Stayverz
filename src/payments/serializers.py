@@ -115,16 +115,11 @@ class HostFinanceReportDataSerializer(serializers.Serializer):
     summary_previous_year_booking_earnings = serializers.DecimalField(max_digits=14, decimal_places=2)
     summary_lifetime_suggestion_rewards = serializers.DecimalField(max_digits=14, decimal_places=2)
 
-    # SRS: "Monthly Payments Overview (Last 12 Months) • Display month-wise received payment amount"
-    # This is for payouts.
     last_12_months_payments_overview = MonthlyPaymentSerializer(many=True, default=list)
 
-    # Data for "Last 6 Months received payments" graph (payouts)
     last_6_months_received_payments_graph = MonthlyPaymentSerializer(many=True, default=list)
     total_earnings_last_6_months_from_payouts = serializers.DecimalField(max_digits=14, decimal_places=2, default=Decimal('0.00')) # NEW
 
-    # Requirement: "last year and current year booking amount month by month"
-    # "Booking amount" likely means Booking.host_pay_out
     current_year_monthly_booking_amounts = MonthlyBookingAmountSerializer(many=True, default=list) # NEW
     previous_year_monthly_booking_amounts = MonthlyBookingAmountSerializer(many=True, default=list) # NEW
 
@@ -134,3 +129,42 @@ class HostFinanceReportDataSerializer(serializers.Serializer):
     last_12_months_income_payments_graph = MonthlyEarningSerializer(many=True, default=list) # Gross earnings
     historical_yearly_income_summary = YearlyIncomeSerializer(many=True, default=list)
     insights = InsightSerializer(default=dict)
+
+
+
+class Last6MonthsPayoutBreakdownSerializer(serializers.Serializer):
+    period_start_date = serializers.DateField()
+    period_end_date = serializers.DateField()
+    gross_earnings_from_included_bookings = serializers.DecimalField(max_digits=14, decimal_places=2) # Sum of Booking.price for bookings in these payouts
+    host_service_fee_from_included_bookings = serializers.DecimalField(max_digits=14, decimal_places=2) # Sum of Booking.host_service_charge for bookings in these payouts
+    total_received_payouts_in_period = serializers.DecimalField(max_digits=14, decimal_places=2)
+
+
+
+class MonthlyListingEarningSerializer(serializers.Serializer):
+    listing_id = serializers.IntegerField()
+    listing_title = serializers.CharField()
+    listing_cover_photo = serializers.URLField(allow_null=True, required=False, allow_blank=True )
+    earnings_from_this_listing_for_month = serializers.DecimalField(max_digits=12, decimal_places=2)
+    # Optional: nights_booked_for_this_listing_for_month = serializers.IntegerField()
+
+class MonthlyPerformanceStatsSerializer(serializers.Serializer):
+    total_nights_booked_for_month = serializers.IntegerField()
+    average_nights_per_stay_for_month = serializers.FloatField() # Or DecimalField
+
+class MonthlyEarningsDetailSerializer(serializers.Serializer):
+    selected_year = serializers.IntegerField()
+    selected_month = serializers.IntegerField()
+    selected_month_name = serializers.CharField()
+
+    # "You earned X" - This is the net amount host is due for the month from bookings and referrals
+    total_net_earnings_for_month = serializers.DecimalField(max_digits=12, decimal_places=2) # host_pay_out + referral_rewards
+
+    # Breakdown section
+    gross_booking_earnings_for_month = serializers.DecimalField(max_digits=12, decimal_places=2) # Sum of Booking.price
+    total_host_service_fee_for_month = serializers.DecimalField(max_digits=12, decimal_places=2) # Sum of Booking.host_service_charge
+    # adjustments and taxes are skipped as per your request
+    net_from_bookings_for_month = serializers.DecimalField(max_digits=12, decimal_places=2) # Gross Booking Earnings - Host Service Fee
+
+    performance_stats = MonthlyPerformanceStatsSerializer()
+    listings_contributing_to_earnings = MonthlyListingEarningSerializer(many=True)

@@ -26,7 +26,8 @@ from payments.models import HostPayMethod, HostPayment, HostPaymentItem
 from payments.serializers import (
     HostPayMethodSerializer,
     HostPaymentItemSerializer,
-    HostPaymentSerializer, HostFinanceReportDataSerializer,
+    HostPaymentSerializer, HostFinanceReportDataSerializer, Last6MonthsPayoutBreakdownSerializer,
+    MonthlyEarningsDetailSerializer,
 )
 
 
@@ -177,7 +178,8 @@ class HostPaymentDetailAPIView(APIView):
 # ------------------------ fin report -----------------------
 
 
-from django.db.models import Sum, Q, Count, F, ExpressionWrapper, DecimalField, IntegerField, DateField, Case, When, FloatField
+from django.db.models import Sum, Q, Count, F, ExpressionWrapper, DecimalField, IntegerField, DateField, Case, When, \
+    FloatField, Avg
 from django.db.models.functions import Coalesce, ExtractYear, ExtractMonth, TruncMonth, Cast
 from rest_framework import views, status
 from rest_framework.response import Response
@@ -449,5 +451,196 @@ class HostFinanceReportAPIView(views.APIView):
         # else it remains 0.0 from initialization
 
         serializer = HostFinanceReportDataSerializer(data=report_data)
+        serializer.is_valid(raise_exception=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+
+
+
+class HostLast6MonthsPayoutBreakdownAPIView(views.APIView):
+    permission_classes = [IsAuthenticated, IsHostUser]
+    serializer_class = Last6MonthsPayoutBreakdownSerializer
+
+    def get_start_of_n_months_ago(self, n_months, from_date=None):
+        """
+        Calculates the first day of the month, N months ago from the from_date.
+        """
+        current_date = from_date or timezone.now().date()
+        target_month_start = current_date.replace(day=1) # Start with the first of the current month
+
+        year = target_month_start.year
+        month = target_month_start.month - (n_months -1) # Go back (n-1) months to get the start of the Nth month period
+
+        while month <= 0:
+            month += 12
+            year -= 1
+        return date(year, month, 1)
+
+    def get(self, request, *args, **kwargs):
+        host = request.user
+        today = timezone.now().date()
+
+        # Determine the period for "Last 6 Months"
+        # Start date: First day of the month, 5 months ago from current month's first day (to get 6 full months window)
+        period_start_date = self.get_start_of_n_months_ago(6, from_date=today)
+        # End date: Could be today, or the last day of the most recent full month in the range.
+        # For "Jan 1 - Jun 30" if current month is June, use last day of current month.
+        # If current month is July 15, "last 6 months" could be Jan 1 - Jun 30, or Feb 1 - July 15.
+        # Let's assume "up to today" for a rolling 6-month window for payouts.
+        period_end_date = today
+
+        # 1. Get payouts made to the host within this period
+        payouts_in_period = HostPayment.objects.filter(
+            host=host,
+            status=PaymentStatusOption.PAID,
+            payment_date__gte=period_start_date,
+            payment_date__lte=period_end_date
+        )
+
+        total_received_payouts = payouts_in_period.aggregate(
+            total=Coalesce(Sum(Cast('total_amount', DecimalField(max_digits=14, decimal_places=2))), Decimal('0.00'))
+        )['total']
+
+        # 2. Get Booking IDs associated with these payouts
+        booking_ids_for_payouts = HostPaymentItem.objects.filter(
+            host_payment__in=payouts_in_period # Link back to the filtered HostPayment records
+        ).values_list('booking_id', flat=True).distinct() # Get distinct booking IDs
+
+        # 3. Aggregate from these specific bookings
+        gross_earnings_from_bookings = Decimal('0.00')
+        host_service_fee_from_bookings = Decimal('0.00')
+
+        if booking_ids_for_payouts: # Check if there are any bookings to aggregate from
+            associated_bookings_qs = Booking.objects.filter(id__in=list(booking_ids_for_payouts))
+
+            gross_earnings_from_bookings = associated_bookings_qs.aggregate(
+                total=Coalesce(Sum(Cast('price', DecimalField(max_digits=14, decimal_places=2))), Decimal('0.00')) # Sum of Booking.price
+            )['total']
+
+            host_service_fee_from_bookings = associated_bookings_qs.aggregate(
+                total=Coalesce(Sum(Cast('host_service_charge', DecimalField(max_digits=14, decimal_places=2))), Decimal('0.00'))
+            )['total']
+
+        # Prepare data for the serializer
+        data_for_serializer = {
+            "period_start_date": period_start_date,
+            "period_end_date": period_end_date, # Can also be last day of 'today.month' if preferred for display
+            "gross_earnings_from_included_bookings": gross_earnings_from_bookings,
+            "host_service_fee_from_included_bookings": host_service_fee_from_bookings,
+            "total_received_payouts_in_period": total_received_payouts
+        }
+
+        serializer = self.serializer_class(data=data_for_serializer)
+        serializer.is_valid(raise_exception=True) # Should be valid as we constructed it
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class HostMonthlyEarningsDetailAPIView(views.APIView):
+    permission_classes = [IsAuthenticated, IsHostUser]
+    # serializer_class = MonthlyEarningsDetailSerializer # For Swagger
+
+    def get(self, request, year=None, month=None, *args, **kwargs): # year and month from URL
+        host = request.user
+
+        # Validate or default year and month
+        if year is None or month is None:
+            # This block would be used if you also have a URL pattern without year/month
+            # to default to the current month.
+            today = timezone.now().date()
+            year = year or today.year
+            month = month or today.month
+        else:
+            # Year and month are provided in the URL, they are already integers
+            # due to <int:year> and <int:month> in the URL pattern.
+            # Basic validation for month range. Year can be any valid integer.
+            if not (1 <= month <= 12):
+                return Response({"error": "Month must be between 1 and 12."},
+                                status=status.HTTP_400_BAD_REQUEST)
+            try:
+                # Check if the date is valid, e.g., not year 0 or too far in past/future if needed
+                date(year, month, 1)
+            except ValueError:
+                return Response({"error": "Invalid year or month provided."},
+                                status=status.HTTP_400_BAD_REQUEST)
+
+
+        # Base queryset for bookings in the selected month by this host (check_in based)
+        bookings_in_selected_month_qs = Booking.objects.filter(
+            host=host,
+            status__in=[BookingStatusOption.CONFIRMED],
+            check_in__year=year,
+            check_in__month=month
+        )
+
+        # ... (rest of your existing logic for calculating earnings, stats, listings)
+        # All the logic below this point remains the same as in your last correct version,
+        # as 'year' and 'month' variables are now correctly populated.
+
+        # 1. "You earned X" - Total Net Earnings for the month
+        monthly_booking_payout_sum = bookings_in_selected_month_qs.aggregate(
+            total=Coalesce(Sum(Cast('host_pay_out', DecimalField(max_digits=12, decimal_places=2))), Decimal('0.00'))
+        )['total']
+        monthly_referral_rewards_sum = ReferralReward.objects.filter(
+            user=host,
+            referral__referral_type=ReferralType.HOST_TO_HOST,
+            created_at__year=year,
+            created_at__month=month
+        ).aggregate(
+            total=Coalesce(Sum('amount'), Decimal('0.00'))
+        )['total']
+        total_net_earnings_for_month = monthly_booking_payout_sum + monthly_referral_rewards_sum
+
+        # 2. Breakdown Section
+        gross_booking_earnings = bookings_in_selected_month_qs.aggregate(
+            total=Coalesce(Sum(Cast('price', DecimalField(max_digits=12, decimal_places=2))), Decimal('0.00'))
+        )['total']
+        total_host_service_fee = bookings_in_selected_month_qs.aggregate(
+            total=Coalesce(Sum(Cast('host_service_charge', DecimalField(max_digits=12, decimal_places=2))), Decimal('0.00'))
+        )['total']
+        net_from_bookings_for_month = gross_booking_earnings - total_host_service_fee
+
+        # 3. Performance Stats for the month
+        performance_aggregates = bookings_in_selected_month_qs.aggregate(
+            total_nights=Coalesce(Sum('night_count'), 0),
+            avg_nights=Coalesce(Avg('night_count', output_field=FloatField()), 0.0)
+        )
+        performance_stats_data = {
+            "total_nights_booked_for_month": performance_aggregates['total_nights'],
+            "average_nights_per_stay_for_month": round(performance_aggregates['avg_nights'], 1) if performance_aggregates['avg_nights'] else 0.0
+        }
+
+        # 4. Listings Contributing to Earnings in that Month
+        listings_data = []
+        earnings_per_listing = bookings_in_selected_month_qs.values(
+            'listing__id',
+            'listing__title',
+            'listing__cover_photo'
+        ).annotate(
+            listing_earning_for_month=Coalesce(Sum(Cast('host_pay_out', DecimalField(max_digits=12, decimal_places=2))), Decimal('0.00'))
+        ).filter(listing_earning_for_month__gt=Decimal('0.00'))
+
+        for item in earnings_per_listing:
+            cover_photo = item['listing__cover_photo']
+            listings_data.append({
+                "listing_id": item['listing__id'],
+                "listing_title": item['listing__title'],
+                "listing_cover_photo": cover_photo if cover_photo else None,
+                "earnings_from_this_listing_for_month": item['listing_earning_for_month']
+            })
+
+        response_data = {
+            "selected_year": year,
+            "selected_month": month,
+            "selected_month_name": calendar.month_name[month],
+            "total_net_earnings_for_month": total_net_earnings_for_month,
+            "gross_booking_earnings_for_month": gross_booking_earnings,
+            "total_host_service_fee_for_month": total_host_service_fee,
+            "net_from_bookings_for_month": net_from_bookings_for_month,
+            "performance_stats": performance_stats_data,
+            "listings_contributing_to_earnings": listings_data
+        }
+
+        serializer = MonthlyEarningsDetailSerializer(data=response_data)
         serializer.is_valid(raise_exception=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
