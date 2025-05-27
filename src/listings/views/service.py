@@ -137,6 +137,8 @@ class ListingCheckoutCalculate:
         guest_service_charge = 0
         host_service_charge = 0
 
+        print(service_charges)
+
         for item in service_charges:
             if item["sc_type"] == "host_charge":
                 host_service_charge = (
@@ -151,11 +153,14 @@ class ListingCheckoutCalculate:
                     else item["value"]
                 )
 
-        guest_service_charge = round(guest_service_charge * booking_price, 2)
-        host_service_charge = round(host_service_charge * booking_price, 2)
+        guest_se = float(guest_service_charge) * float(booking_price)
+        host_se = float(host_service_charge) * float(booking_price)
 
-        total_price = booking_price + guest_service_charge
-        host_pay_out = booking_price - host_service_charge
+        guest_service_charge = round(guest_se, 2)
+        host_service_charge = round(host_se, 2)
+
+        total_price = float(booking_price) + float(guest_service_charge)
+        host_pay_out = float(booking_price) - float(host_service_charge)
         total_profit = host_service_charge  # host_service_charge + guest_service_charge
 
         data["nights"] = nights
@@ -166,4 +171,6 @@ class ListingCheckoutCalculate:
         data["host_pay_out"] = host_pay_out
         data["price_info"] = booking_date_info
         data["total_profit"] = total_profit
+
+        print( " --------------- ", host_service_charge)
         return {"data": data, "status": 200}

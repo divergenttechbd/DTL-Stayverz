@@ -18,6 +18,11 @@ from django.utils.translation import gettext_lazy as _
 User = get_user_model()
 
 
+class SuperhostTierChoices(models.TextChoices):
+    SILVER = 'SILVER', 'Silver Host'
+    GOLD = 'GOLD', 'Gold Host'
+    PLATINUM = 'PLATINUM', 'Platinum Host'
+
 class ListingSoftDeleteManager(models.Manager):
     def get_queryset(self):
         return ListingSoftDeleteQuerySet(self.model, using=self._db).filter(is_deleted=False)
@@ -113,6 +118,13 @@ class Listing(BaseModel):
 
     area = models.CharField(blank=True)
     city = models.CharField(blank=True)
+
+    enable_length_of_stay_discount = models.BooleanField(default=False)
+    length_of_stay_discounts = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Define discounts for longer stays, e.g., {\"3\": 5, \"7\": 10} for 5% off 3+ days, 10% off 7+ days."
+    )
 
 
     instant_booking_allowed = models.BooleanField(default=False)

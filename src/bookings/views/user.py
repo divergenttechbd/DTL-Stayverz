@@ -19,7 +19,7 @@ from accounts.tasks.users import send_sms
 from base.helpers.decorators import exception_handler
 from base.permissions import (
     HostUserHasObjectAccess,
-    IsGuestUser,
+    IsGuestUser, IsStaff, IsSuperUser,
 )
 from base.type_choices import (
     BookingStatusOption,
@@ -329,11 +329,12 @@ class GuestBookingReviewRetrieveAPIView(views.APIView):
 
 
 class GuestBookingCancelAPIView(views.APIView):
-    permission_classes = (IsAuthenticated, IsGuestUser, HostUserHasObjectAccess)
+    permission_classes = (IsAuthenticated,IsGuestUser)
     swagger_tags = ["Gust Bookings"]
 
     @method_decorator(exception_handler)
     def post(self, request, *args, **kwargs):
+
         invoice_no = kwargs.get("invoice_no")
         cancellation_reason = request.data["cancellation_reason"]
 
@@ -405,6 +406,83 @@ class GuestBookingCancelAPIView(views.APIView):
             {"message": "Booking cancellation done"}, status=status.HTTP_200_OK
         )
 
+class GuestBookingCancelAdminAPIView(views.APIView):
+    permission_classes = (IsAuthenticated,)
+    swagger_tags = ["Gust Bookings"]
+
+    @method_decorator(exception_handler)
+    def post(self, request, *args, **kwargs):
+
+        invoice_no = kwargs.get("invoice_no")
+        cancellation_reason = request.data["cancellation_reason"]
+
+        current_date = datetime.now().date()
+        booking = Booking.objects.get(
+            invoice_no=invoice_no,
+            guest_id=kwargs.get("guest_id"),
+            status=BookingStatusOption.CONFIRMED,
+        )
+
+        if booking.check_in < current_date:
+            return Response(
+                {"message": "Booking can only be cancelled before check in date"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        listing = booking.listing
+
+        listing_calendar_ids = [
+            d.get("id") for d in booking.calendar_info if d.get("id")
+        ]
+
+        cancellation_policy = listing.cancellation_policy
+        cancellation_deadline = cancellation_policy.get("cancellation_deadline")
+        refund_percentage = cancellation_policy.get("refund_percentage")
+        days_before_check_in = booking.check_in - timedelta(days=cancellation_deadline)
+
+        if refund_percentage != 0 and current_date <= days_before_check_in:
+            host_service_charge = ServiceCharge.objects.filter(
+                sc_type=ServiceChargeTypeOption.HOST_CHARGE
+            ).first()
+            host_service_charge_value = (
+                host_service_charge.value / 100
+                if host_service_charge.calculation_type == "percentage"
+                else host_service_charge.value
+            )
+
+            refund_amount = (refund_percentage / 100) * booking.price
+            host_service_charge_amount = round(
+                host_service_charge_value * refund_amount
+            )
+
+            host_pay_out = refund_amount - host_service_charge_amount
+            booking.host_pay_out = host_pay_out
+            booking.host_service_charge = host_service_charge_amount
+            booking.refund_amount = refund_amount
+            booking.is_refunded = True
+
+        booking.status = BookingStatusOption.CANCELLED
+        booking.cancellation_reason = cancellation_reason
+
+        with transaction.atomic():
+            booking.save()
+            if len(listing_calendar_ids) > 0:
+                ListingCalendar.objects.filter(id__in=listing_calendar_ids).delete()
+
+        send_sms(
+            username=booking.guest.phone_number,
+            message="You’ve successfully cancelled your booking",
+        )
+        send_sms(
+            username=booking.host.phone_number,
+            message="A guest cancelled booking just now",
+        )
+
+        booking_cancelled_process.delay(booking_id=booking.id)  # delay
+
+        return Response(
+            {"message": "Booking cancellation done"}, status=status.HTTP_200_OK
+        )
 
 
 class DownloadInvoiceAPIView(APIView):

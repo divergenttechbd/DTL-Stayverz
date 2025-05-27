@@ -55,7 +55,6 @@ class AdminListingListAPIView(ListAPIView):
             filtered_qs = filtered_qs.order_by("-avg_rating")
         else:
             filtered_qs = filtered_qs.order_by("-created_at")
-
         return filtered_qs
 
     def get_serializer(self, *args, **kwargs):
@@ -82,14 +81,6 @@ class AdminListingLitListAPIView(ListAPIView):
         kwargs["context"] = self.get_serializer_context()
         kwargs["fields"] = ["id", "cover_photo", "title"]
         return self.serializer_class(*args, **kwargs)
-
-    # def get(self, request, *args, **kwargs):
-    #     listings = list(
-    #         Listing.objects.filter(title=request.GET.get("search", "")).values(
-    #             "id", "cover_photo", "title"
-    #         )
-    #     )
-    #     return Response(data=listings, status=status.HTTP_200_OK)
 
 
 class AdminListingRetrieveUpdateAPIView(RetrieveUpdateAPIView):

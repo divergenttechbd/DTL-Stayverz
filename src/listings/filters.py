@@ -1,3 +1,4 @@
+from django.db.models import Q
 from django_filters import rest_framework as filters
 from listings.models import Listing
 
@@ -28,6 +29,18 @@ class PublicListingFilter(filters.FilterSet):
     place_type__in = CharacterInFilter(field_name="place_type", lookup_expr="in")
     price = filters.RangeFilter()
 
+    host_superhost_tier__in = CharacterInFilter(
+        field_name="host__current_superhost_tier",
+        lookup_expr="in",
+        label="Superhost Tier(s) (e.g., SILVER,GOLD)"
+    )
+
+
+    is_superhost = filters.BooleanFilter(
+        method='filter_is_superhost',
+        label="Show only listings from Superhosts (any tier)"
+    )
+
     class Meta:
         model = Listing
         fields = (
@@ -39,7 +52,20 @@ class PublicListingFilter(filters.FilterSet):
             "listing_amenity__in",
             "category__in",
             "price",
+            "host_superhost_tier__in",
+            "is_superhost",
         )
+
+    def filter_is_superhost(self, queryset, name, value):
+
+        if value is True:
+
+            return queryset.filter(host__current_superhost_tier__isnull=False).exclude(
+                host__current_superhost_tier__exact='')
+        elif value is False:
+            return queryset.filter(
+                Q(host__current_superhost_tier__isnull=True) | Q(host__current_superhost_tier__exact=''))
+        return queryset
 
     @property
     def qs(self):

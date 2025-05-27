@@ -5,7 +5,7 @@ from listings.views.public import (
     PublicListingConfigurationListApiView,
     PublicListingRetrieveAPIView,
     PublicListingCheckoutCalculateAPIView,
-    PublicListingLiteRetrieveAPIView,
+    PublicListingLiteRetrieveAPIView, SimpleRandomPriorityAPIView, TimeBasedRotationAPIView,
 )
 
 app_name = "public"
@@ -16,6 +16,9 @@ urlpatterns = [
         PublicListingConfigurationListApiView.as_view(),
         name="configuration_list",
     ),
+
+    path('listings/random/', SimpleRandomPriorityAPIView.as_view(), name='listings_random'),
+    path('listings/timebased/', TimeBasedRotationAPIView.as_view(), name='listings_timebased'),
     path(
         "listings/",
         PublicListingListAPIView.as_view(),
@@ -36,4 +39,7 @@ urlpatterns = [
         PublicListingCheckoutCalculateAPIView.as_view(),
         name="listing_checkout_calculate",
     ),
+
+    # path('listings/random/', SimpleRandomPriorityAPIView.as_view(), name='listings_random'),
+    # path('listings/timebased/', TimeBasedRotationAPIView.as_view(), name='listings_timebased')
 ]
