@@ -1,5 +1,8 @@
 import re
+from decimal import Decimal
+
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 from rest_framework.serializers import (
     Serializer,
     ModelSerializer,
@@ -242,3 +245,51 @@ class SuperhostStatusHistorySerializer(serializers.ModelSerializer):
             'created_at'
         ]
 
+
+class HostPublicProfileSerializer(serializers.ModelSerializer):
+
+    bio = serializers.CharField(source='userprofile.bio', read_only=True, allow_null=True)
+    # total_listings = serializers.IntegerField(source='listing_set.count', read_only=True) # Basic count
+    # More accurate total_listings considering only PUBLISHED:
+    total_active_listings = serializers.SerializerMethodField()
+    years_hosting = serializers.SerializerMethodField()
+    full_name = serializers.CharField(source='get_full_name', read_only=True)
+    distance_km = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = [
+            'id',
+            'username',
+            'full_name',
+            'image',
+            'bio',
+            'total_active_listings',
+            'avg_rating',
+            'years_hosting',
+            'current_superhost_tier',
+            'distance_km'
+        ]
+        read_only_fields = fields
+
+    def get_total_active_listings(self, obj: User) -> int:
+
+        from listings.models import Listing
+        from base.type_choices import ListingStatusOption
+        return Listing.objects.filter(host=obj, status=ListingStatusOption.PUBLISHED, is_deleted=False).count()
+
+    def get_years_hosting(self, obj: User) -> int:
+        if obj.date_joined:
+            years = (timezone.now().date() - obj.date_joined.date()).days / 365.25
+            return int(years)
+        return 0
+
+    def get_superhost_tier_display_name(self, obj: User) -> str:
+        return obj.get_current_superhost_tier_display()
+
+    def get_distance_km(self, obj: User) -> Decimal | None:
+
+        if hasattr(obj, 'calculated_distance_km'):
+            return obj.calculated_distance_km.quantize(Decimal('0.1'))
+
+        return None

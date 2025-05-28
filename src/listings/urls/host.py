@@ -4,7 +4,8 @@ from listings.views.host import (
     HostListingListCreateAPIView,
     HostListingRetrieveUpdateAPIView,
     HostListingConfigurationApiView,
-    HostListingCalendarApiView,
+    HostListingCalendarApiView, ManageListingCoHostsAPIView, PrimaryHostCoHostAssignmentsListView,
+    PrimaryHostViewCoHostAssignmentsStatusAPIView, ListCoHostsForListingAPIView, MyCoHostedListingsAPIView,
 )
 
 app_name = "host"
@@ -30,4 +31,12 @@ urlpatterns = [
         HostListingCalendarApiView.as_view(),
         name="listing_calendar",
     ),
+
+    path('manage-cohosts/', ManageListingCoHostsAPIView.as_view(), name='manage_listing_cohosts'),
+    path('my-cohost-assignments/', PrimaryHostCoHostAssignmentsListView.as_view(), name='my_primary_cohost_assignments'),
+
+path('primary-host/cohost-assignment-status/', PrimaryHostViewCoHostAssignmentsStatusAPIView.as_view(), name='primary_host_cohost_assignment_status'),
+path('listing/active-cohosts/', ListCoHostsForListingAPIView.as_view(), name='listing_active_cohosts'),
+path('my-assignments/cohosting-listings/', MyCoHostedListingsAPIView.as_view(), name='my_cohosted_listings'),
 ]
+

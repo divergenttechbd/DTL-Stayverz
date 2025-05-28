@@ -48,6 +48,11 @@ class User(AbstractUser, BaseModel):
     wishlist_listings = ArrayField(models.PositiveBigIntegerField(), blank=True)
     points_balance = models.PositiveIntegerField(default=0, help_text="Points earned by guest users for spending and referrals.")
 
+    is_available_for_cohosting = models.BooleanField(
+        default=False,
+        help_text="If True, this host is open to being contacted or found for co-hosting opportunities."
+    )
+
     current_superhost_tier = models.CharField(
         max_length=20,
         choices=[(key, data['name']) for key, data in settings.SUPERHOST_TIERS.items()] + [(None, 'Not a Superhost')],

@@ -1,6 +1,7 @@
 from rest_framework.permissions import BasePermission
 
 from base.type_choices import UserStatusOption, UserTypeOption
+from listings.models import Listing, ListingCoHost
 
 
 class IsSuperUser(BasePermission):
@@ -80,3 +81,39 @@ class HasRequiredPermissionForMethod(BasePermission):
         #     self.message = f'Access denied. You need the {permission_required} permission to access this service with {request.method}.'
         #     return False
         return True
+
+
+class IsPrimaryHostOrActiveCoHost(BasePermission):
+    """
+    Allows access if the user is the primary host of the listing
+    OR an active co-host assigned to that specific listing.
+    """
+    message = "You must be the primary host or an active co-host for this listing to perform this action."
+
+    def has_permission(self, request, view):
+        # Basic authentication check at the view level
+        return request.user and request.user.is_authenticated
+
+    def has_object_permission(self, request, view, obj):
+        # obj is expected to be a Listing instance
+        if not isinstance(obj, Listing):
+            # This permission is intended for Listing objects
+            return False
+
+        user = request.user
+
+        # 1. Check if the user is the primary host of the listing
+        if obj.host == user:
+            return True
+
+        # 2. Check if the user is an active co-host for this listing
+        # Ensure the user is also of u_type 'host' to be a co-host
+        if user.u_type == 'host':  # Assuming UserTypeOption.HOST is 'host'
+            is_active_cohost = ListingCoHost.objects.filter(
+                listing=obj,
+                co_host_user=user,
+                is_active=True  # Crucial: only active co-host assignments grant permission
+            ).exists()
+            return is_active_cohost
+
+        return False

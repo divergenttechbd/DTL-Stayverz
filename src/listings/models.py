@@ -1,3 +1,6 @@
+from decimal import Decimal
+
+from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 from django.contrib.gis.db.models import PointField
 from django.contrib.gis.geos import Point
@@ -9,11 +12,14 @@ from base.type_choices import (
     AmenityTypeOption,
     ListingStatusOption,
     ListingVerificationStatusOption,
-    PlaceTypeOption,
+    PlaceTypeOption, UserTypeOption,
 )
 from django.utils import timezone
 from configurations.data import default_cancellation_policy
 from django.utils.translation import gettext_lazy as _
+
+from myproject import settings
+
 # Create your models here.
 User = get_user_model()
 
@@ -213,4 +219,67 @@ class ListingCalendar(BaseModel):
         return str(self.pk)
 
 
+class CoHostAccessLevel(models.TextChoices):
+    SEMI_ACCESS = 'semi', 'Semi Access'     # Limited permissions
+    FULL_ACCESS = 'full', 'Full Access'     # Full permissions (like primary host for that listing)
+    CUSTOM = 'custom', 'Custom Access'
 
+
+class ListingCoHost(BaseModel): # Inherits created_at, updated_at
+    listing = models.ForeignKey(
+        'listings.Listing', # Use string reference if Listing is in the same app or to avoid circular import
+        on_delete=models.CASCADE,
+        related_name='cohost_assignments'
+    )
+    co_host_user = models.ForeignKey( # The user who is the co-host
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='cohosting_gigs',
+        limit_choices_to={'u_type': UserTypeOption.HOST} # Co-hosts are also hosts
+    )
+    primary_host = models.ForeignKey( # The original owner of the listing
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='assigned_cohosts_to_listings'
+
+    )
+    access_level = models.CharField(
+        max_length=10,
+        choices=CoHostAccessLevel.choices,
+        default=CoHostAccessLevel.SEMI_ACCESS
+    )
+    commission_percentage = models.DecimalField(
+        max_digits=5, # Allows up to 100.00%
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal('0.00')), MaxValueValidator(Decimal('100.00'))],
+        default=Decimal('0.00'),
+        help_text="Percentage of booking revenue (e.g., host payout) co-host receives for this listing."
+    )
+    is_active = models.BooleanField(default=True, help_text="Is this co-hosting assignment currently active?")
+
+    class Meta:
+        unique_together = ('listing', 'co_host_user') # A user can only be a co-host once for a specific listing
+        verbose_name = "Listing Co-Host Assignment"
+        verbose_name_plural = "Listing Co-Host Assignments"
+
+    def __str__(self):
+        return f"{self.co_host_user.username} co-hosting {self.listing.title} ({self.get_access_level_display()})"
+
+    def clean(self):
+        super().clean()
+        if self.listing.host == self.co_host_user:
+            raise ValidationError("A host cannot assign themselves as a co-host to their own listing.")
+        # Ensure primary_host matches listing.host if you keep this field
+        if hasattr(self, '_primary_host_is_listing_host_check') and self.primary_host != self.listing.host:
+             raise ValidationError("Primary host must be the owner of the listing.")
+
+    def save(self, *args, **kwargs):
+        # Automatically set primary_host if not provided and if listing is set
+        if not self.primary_host_id and self.listing_id:
+             self.primary_host = self.listing.host
+        # Set a flag to perform the check only if primary_host was part of the instance or data.
+        # This avoids error when self.listing.host is not yet available (e.g. during initial creation if listing is not set).
+        self._primary_host_is_listing_host_check = True
+        self.full_clean()
+        delattr(self, '_primary_host_is_listing_host_check') # Clean up temporary attribute
+        super().save(*args, **kwargs)
