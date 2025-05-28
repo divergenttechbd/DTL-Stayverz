@@ -9,7 +9,7 @@ readme = "README.md"
 [tool.poetry.dependencies]
 python = "^3.10"
 fastapi = "^0.103.2"
-uvicorn = {extras = ["standard"], version = "^0.23.2"}
+uvicorn = {extras = ["standard"], version = "^0.34.2"}
 pydantic-settings = "^2.0.3"
 celery = "^5.3.4"
 redis = "^5.0.1"
