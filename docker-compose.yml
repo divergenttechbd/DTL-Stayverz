@@ -1,0 +1,58 @@
+# docker-compose.yml
+
+# version: "3"
+
+services:
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+      - ./redis.conf:/usr/local/etc/redis/redis.conf
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+
+  worker:
+    container_name: bkash_disbursement_celery_worker
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: bash -c "cd src/worker && celery -A celery_app.celery worker --loglevel=info"
+    restart: always
+    volumes:
+      - .:/src
+    env_file:
+      - .env
+    depends_on:
+      - redis
+
+  flower:
+    image: mher/flower
+    command: celery --broker=redis://redis:6379/0 flower --port=5555
+    ports:
+      - 5556:5555
+    env_file:
+      - .env
+    depends_on:
+      - worker
+    volumes:
+      - flower_data:/data
+
+  web:
+    container_name: gk_app_backend
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: bash -c 'uvicorn src.main:app --host 0.0.0.0 --reload'
+    volumes:
+      - .:/src
+    ports:
+      - 8000:8000
+    env_file:
+      - .env
+    depends_on:
+      - redis
+
+volumes:
+  redis_data:
+  flower_data:
