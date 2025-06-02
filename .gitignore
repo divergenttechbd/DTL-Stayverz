@@ -109,3 +109,5 @@ venv.bak/
 note.txt
 
 .vscode/*
+
+fcm.json
