@@ -1,0 +1,31 @@
+{
+    "[python]": {
+        "editor.defaultFormatter": "ms-python.black-formatter",
+        "editor.formatOnSave": true
+    },
+
+    "files.exclude": {
+        "**/__pycache__": true,
+        "**/.mypy_cache": true
+    },
+    "cSpell.words": [
+        "aioredis",
+        "AMQP",
+        "anyio",
+        "jsonable",
+        "templating"
+    ],
+    "mypy.enabled": true,
+    "mypy.runUsingActiveInterpreter": true,
+    "python.linting.mypyEnabled": true,
+    "python.linting.mypyCategorySeverity.error":"Error",
+    "python.linting.mypyArgs": [
+        "--ignore-missing-imports",
+        "--follow-imports=silent",
+        "--show-column-numbers",
+        "--disallow-untyped-defs",
+        "--disallow-untyped-calls"
+    ]
+
+
+}
