@@ -1,0 +1,20 @@
+{
+  "plugins": ["@tanstack/query","unused-imports"],
+  "extends": [
+    "next/core-web-vitals",
+    "plugin:@tanstack/eslint-plugin-query/recommended"
+  ],
+  "rules": {
+    "semi": ["error", "never"],
+    "quotes": ["error", "single", {"allowTemplateLiterals": true}],
+    "jsx-quotes": ["error", "prefer-single"],   
+    "indent": [1, 2],
+    "eol-last": ["error", "always"],
+    "no-restricted-imports": ["error", {
+      "patterns": [".*"]
+    }],
+    "@tanstack/query/exhaustive-deps": "error",
+    "@tanstack/query/prefer-query-object-syntax": "error",
+    "unused-imports/no-unused-imports": "error"
+  }
+}

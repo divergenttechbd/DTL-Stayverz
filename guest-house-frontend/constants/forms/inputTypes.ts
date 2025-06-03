@@ -1,0 +1,27 @@
+const inputTypes = {
+  BOOLEAN: 'boolean',
+  CHECKBOX: 'checkbox',
+  COUNTER: 'counter',
+  CUSTOM: 'custom',
+  DATE: 'date',
+  DATE_TIME: 'datetime-local',
+  DATE_RANGE: 'date_range',
+  FILE: 'file',
+  GROUP_INPUT: 'group_input',
+  IMAGE: 'image',
+  LOCATION: 'location',
+  MULTI_SELECT: 'multi_select',
+  NUMBER: 'number',
+  PASSWORD: 'password',
+  RADIO: 'radio',
+  RATING: 'rating',
+  SEARCH: 'search',
+  SELECT: 'select',
+  SWITCH: 'switch,',
+  TEXT: 'text',
+  TEXTAREA: 'textarea',
+  TIME_SELECT: 'time_select',
+  RANGE_SLIDER: 'range_slider',
+} as const
+
+export default inputTypes

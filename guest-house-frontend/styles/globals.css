@@ -1,0 +1,151 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* importing poppins font */
+
+/* width */
+::-webkit-scrollbar {
+  width: 5px;
+}
+
+/* Track */
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+/* Handle */
+::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 5px;
+}
+
+/* Handle on hover */
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+body {
+  /* height: 100vh; */
+  box-sizing: border-box;
+  margin: 0;
+}
+
+/* button hover - custom design */
+.profileBtn::before {
+  content: "";
+  position: absolute;
+  left: -10px;
+  width: 0;
+  height: 0;
+  border-top-left-radius: 8px;
+  border-bottom-left-radius: 8px;
+}
+
+.profileBtn::after {
+  content: "";
+  position: absolute;
+  right: -10px;
+  width: 0;
+  height: 0;
+  border-top-right-radius: 8px;
+  border-bottom-right-radius: 8px;
+}
+
+.profileBtn:hover::before,
+.profileBtn:hover::after {
+  width: 10px;
+  height: 100%;
+  background-color: #f1f1f1;
+  top: 0px;
+}
+
+/* Prevent autofill background color change */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  transition: background-color 5000s ease-in-out 0s;
+  background-color: inherit !important;
+}
+
+/* TEXT ELLIPSIS */
+.ellipsis-one-line {
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ellipsis-two-line {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ellipsis-three-line {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.remove-arrow::-webkit-inner-spin-button,
+.remove-arrow::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.remove-arrow {
+  -moz-appearance: textfield;
+}
+
+.scrollbar-hidden::-webkit-scrollbar {
+  display: none;
+}
+
+/* Heartbeat animation */
+@keyframes heartbeat {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.25);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.heart:hover {
+  animation: heartbeat 1s infinite;
+  fill: red;
+  color: red;
+  opacity: 1;
+  transition: opacity 500ms;
+}
+
+.moz-none-inner-focus::-moz-focus-inner {
+  border: 0;
+}
+
+.moz-none-inner-focus:focus {
+  outline: none;
+}
+
+.stayverz-checkbox-icon.selected {
+  display: none;
+}
+.stayverz-checkbox:hover .stayverz-checkbox-icon:not(.selected),
+.stayverz-checkbox.selected .stayverz-checkbox-icon:not(.selected) {
+  display: none;
+}
+
+.stayverz-checkbox:hover .stayverz-checkbox-icon.selected,
+.stayverz-checkbox.selected .stayverz-checkbox-icon.selected {
+  display: flex;
+}
