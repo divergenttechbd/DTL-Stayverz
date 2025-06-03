@@ -89,8 +89,16 @@ app = create_app()
 
 @app.on_event("startup")
 async def app_init() -> None:
-    await Database("mongodb://localhost:27017").connect_to_database()
+
+    # i1DIzuRCxWEhC465
+
+    # await Database("mongodb://localhost:27017").connect_to_database()
+    # await Database("mongodb://192.168.8.158:27017").connect_to_database()
+    # await Database("mongodb+srv://paragcste:i1DIzuRCxWEhC465@cluster0.tm6kc.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0").connect_to_database()
+    await Database("mongodb://192.168.7.172:27017").connect_to_database()
     await broadcast.connect()
+
+    print("🚀 Startup event called")
 
 
 @app.on_event("shutdown")

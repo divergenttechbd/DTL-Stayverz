@@ -30,7 +30,8 @@ from src.core.di import Container
 from src.modules.chat.service import ChatService
 
 
-broadcast = Broadcast("redis://localhost:6379")
+# broadcast = Broadcast("redis://localhost:6379")
+broadcast = Broadcast("redis://192.168.7.172:6379")
 
 router = APIRouter(prefix="/user")
 
