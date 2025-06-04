@@ -22,5 +22,12 @@
       <jdbc-url>jdbc:postgresql://120.50.7.102:5432/drf</jdbc-url>
       <working-dir>$ProjectFileDir$</working-dir>
     </data-source>
+    <data-source source="LOCAL" name="stdrf@192.168.7.172" uuid="104b563d-f067-4ef7-8ff3-2509cd06e139">
+      <driver-ref>postgresql</driver-ref>
+      <synchronize>true</synchronize>
+      <jdbc-driver>org.postgresql.Driver</jdbc-driver>
+      <jdbc-url>jdbc:postgresql://192.168.7.172:5435/stdrf</jdbc-url>
+      <working-dir>$ProjectFileDir$</working-dir>
+    </data-source>
   </component>
 </project>

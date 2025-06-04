@@ -112,7 +112,7 @@ class UserIdentityVerificationSerializer(Serializer):
 
 class UserLiveVerificationSerializer(Serializer):
     document_type = CharField(required=True)
-    image = CharField(required=True)
+    live = CharField(required=True)
 
     def validate_document_type(self, value):
         if value not in ["passport", "nid", "driving_license", "live"]:

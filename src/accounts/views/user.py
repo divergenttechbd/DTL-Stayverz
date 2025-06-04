@@ -480,7 +480,7 @@ class UserSelfieVerificationAPIView(APIView):
         ]
 
         user.identity_verification_images = {
-            "live": request.data["image"],
+            "live": request.data["live"],
         }
         user.identity_verification_method = request.data["document_type"]
         user.identity_verification_status = IdentityVerificationStatusOption.PENDING
