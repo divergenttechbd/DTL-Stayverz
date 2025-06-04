@@ -22,6 +22,7 @@ type Props = {
 };
 
 export default function UserNewEditForm({ currentUser, getUserDetails }: Props) {
+  console.log('currentUser', currentUser);
   const [open, setOpen] = useState(false);
   const [selectedImage, setSelectedImage] = useState('');
   const [verificationAction, setVerificationAction] = useState<'' | 'verified' | 'rejected'>('');
@@ -33,6 +34,7 @@ export default function UserNewEditForm({ currentUser, getUserDetails }: Props) 
     defaultValues: {
       first_name: currentUser?.first_name,
       last_name: currentUser?.last_name,
+      email: currentUser?.email,
     },
   });
 
@@ -43,6 +45,7 @@ export default function UserNewEditForm({ currentUser, getUserDetails }: Props) 
         first_name: data?.first_name,
         last_name: data?.last_name,
         user_status: currentUser?.status,
+        email: data?.email,
       });
       console.log('response', res)
       if (!res.success) throw res.data;
@@ -202,12 +205,13 @@ export default function UserNewEditForm({ currentUser, getUserDetails }: Props) 
                 InputLabelProps={{ shrink: true }}
               />
               <TextField
-                name="email"
+                // name="email"
                 label="Email Address"
-                value={currentUser?.email || ''}
-                InputProps={{
-                  readOnly: true,
-                }}
+                {...register('email')}
+                // InputProps={{
+                //   readOnly: true,
+                // }}
+                InputLabelProps={{ shrink: true }}
               />
               <TextField
                 name="phone_number"
@@ -268,6 +272,53 @@ export default function UserNewEditForm({ currentUser, getUserDetails }: Props) 
               </Button>
             )}
           </Box>
+
+
+          {/* Live Verification Photo */}
+          {currentUser?.image && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '1.5rem', marginBottom: '0.5rem' }}>
+              {currentUser?.image && (
+                <Typography variant="body1">
+                  Live Verification Photo
+                </Typography>
+
+              )}
+              {currentUser && (
+                <Label
+                  color={
+                    (currentUser.image && 'success') ||
+                    'warning'
+                  }
+                // sx={{ position: 'absolute', top: 24, right: 24 }}
+                >
+                  {currentUser.image ? "Verified" : "Not Verified"}
+                </Label>
+              )}
+            </div>
+          )}
+
+          <Box
+            rowGap={3}
+            columnGap={2}
+            display="grid"
+            gridTemplateColumns={{
+              xs: 'repeat(1, 1fr)',
+              sm: 'repeat(2, 1fr)',
+            }}
+          >
+            {currentUser?.image && (
+              <Button
+                onClick={handleClickOpen(currentUser?.image)}
+              >
+                <img
+                  src={currentUser?.image}
+                  alt="Front"
+                  style={{ cursor: 'pointer', width: '100%', borderRadius: '8px' }}
+                />
+              </Button>
+            )}
+          </Box>
+          {/* Live Verification Photo */}
 
           {currentUser?.identity_verification_status === 'pending' && (
             <Stack
