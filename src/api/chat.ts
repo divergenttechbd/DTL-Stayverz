@@ -19,7 +19,7 @@ const options = {
 export function useGetContacts() {
   const URL = [endpoints.chat, { params: {} }];
 
-  const { data, isLoading, error, isValidating } = useSWR(URL, fetcher, options);
+  const { data, isLoading, error, isValidating } = useSWR(URL, fetcher, options);   // todo: ayon
 
   const memoizedValue = useMemo(
     () => ({
@@ -31,7 +31,7 @@ export function useGetContacts() {
     }),
     [data, error, isLoading, isValidating]
   );
-
+  
   return memoizedValue;
 }
 
@@ -39,6 +39,7 @@ export function useGetContacts() {
 
 export function useGetConversations(refresh = false) {
   const URL = [endpoints.chat, { params: {} }];
+  // todo: ayon
 
   const { data, isLoading, error, isValidating } = useSWR(URL, fetcher, {
     ...options,
@@ -100,7 +101,7 @@ export function useGetConversation(conversationId: string) {
   const URL = conversationId
     ? [`${endpoints.chat}${conversationId}/`, { params: { limit: 0 } }]
     : null;
-
+    console.log(URL)
   const {
     data,
     isLoading,

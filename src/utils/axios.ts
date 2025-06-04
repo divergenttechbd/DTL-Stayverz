@@ -36,7 +36,7 @@ export const fetcherWithMeta = async (args: string | [string, AxiosRequestConfig
 // ----------------------------------------------------------------------
 
 export const endpoints = {
-  chat: `${process.env.REACT_APP_API_CHAT}/chat/admin/rooms/`,
+  chat: `${process.env.REACT_APP_API_CHAT}/chat/admin/rooms/`, // todo: ayon (env is undefined)
   post: {
     list: '/api/post/list',
     details: '/api/post/details',
