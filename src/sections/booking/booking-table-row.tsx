@@ -20,6 +20,7 @@ type Props = {
   row: IBookingItem;
   onSelectRow: VoidFunction;
   onDeleteRow: VoidFunction;
+  onCancel: VoidFunction;
 };
 
 export default function BookingTableRow({
@@ -28,6 +29,7 @@ export default function BookingTableRow({
   onEditRow,
   onSelectRow,
   onDeleteRow,
+  onCancel,
 }: Props) {
   const {
     id,
@@ -118,6 +120,14 @@ export default function BookingTableRow({
             }}
           >
             Details
+          </Button>
+        </Tooltip>
+        <Tooltip title="Cancel Booking" placement="top" arrow>
+          <Button
+            color="error"
+            onClick={onCancel}
+          >
+            Cancel
           </Button>
         </Tooltip>
       </TableCell>

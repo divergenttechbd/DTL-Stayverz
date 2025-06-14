@@ -39,9 +39,24 @@ import HostTableRow from '../host-table-row';
 //
 
 const filterOptions = [
-  { label: 'Weekly', value: 'WEEKLY' },
-  { label: 'Monthly', value: 'MONTHLY' },
-  { label: 'Yearly', value: 'YEARLY' },
+  // { label: 'Weekly', value: 'WEEKLY' },
+  // { label: 'Monthly', value: 'MONTHLY' },
+  // { label: 'Yearly', value: 'YEARLY' },
+  { label: 'WEEKLY', value: 'WEEKLY' },
+  { label: 'MONTHLY', value: 'MONTHLY' },
+  { label: 'YEARLY', value: 'YEARLY' },
+];
+
+const sortFieldFilterOptions = [
+  { label: 'Total Sell Amount', value: 'total_sell_amount' },
+  { label: 'Total Property', value: 'total_property' },
+  { label: 'First Name', value: 'first_name' },
+  { label: 'Last Name', value: 'last_name' },
+];
+
+const sortOrderFilterOptions = [
+  { label: 'Low to High', value: 'asc' },
+  { label: 'High to Low', value: 'desc' },
 ];
 
 // ----------------------------------------------------------------------
@@ -69,6 +84,8 @@ export default function OverviewAppView() {
     bookingStatYear: 2024,
     topSellingFilter: 'MONTHLY',
     countStatFilter: 'MONTHLY',
+    sortField: 'total_sell_amount',
+    sortOrder: 'desc',
   });
 
   const settings = useSettingsContext();
@@ -108,13 +125,15 @@ export default function OverviewAppView() {
       const hostList = await getBestSellingHosts({
         page_size: 5,
         query_type: filters.topSellingFilter,
+        sort_by: filters.sortField,
+        order: filters.sortOrder
       });
       if (!hostList.success) throw hostList.data;
       setStats((prevStats: any) => ({ ...prevStats, best_selling_hosts: hostList.data }));
     } catch (err) {
       console.error(err);
     }
-  }, [filters.topSellingFilter]);
+  }, [filters.topSellingFilter, filters.sortField, filters.sortOrder]);
 
   useEffect(() => {
     fetchDashboardStat();
@@ -136,7 +155,7 @@ export default function OverviewAppView() {
     <Container maxWidth={settings.themeStretch ? false : 'xl'}>
       <Grid container spacing={3}>
         <Grid xs={12}>
-          <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between' }}>
+          <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between'}}>
             <Typography variant="h5" sx={{ ml: 2, mb: 2, mt: 2 }}>
               Best Selling Host
             </Typography>
@@ -258,39 +277,107 @@ export default function OverviewAppView() {
               <Typography variant="h5" sx={{ ml: 2, mb: 2, mt: 2 }}>
                 Best Selling Host
               </Typography>
-              <FormControl
-                sx={{
-                  flexShrink: 1,
-                  width: { xs: '200px' },
-                }}
-              >
-                <Select
-                  value={filters?.topSellingFilter}
-                  onChange={(val) =>
-                    setFilters?.((prev: any) => ({
-                      ...(prev || {}),
-                      topSellingFilter: val.target.value,
-                    }))
-                  }
-                  renderValue={(selected) => startCase(selected?.toLowerCase())}
-                  MenuProps={{
-                    PaperProps: {
-                      sx: { maxHeight: 240 },
-                    },
+              <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', gap: 1 }}>
+                <FormControl
+                  sx={{
+                    flexShrink: 1,
+                    width: { xs: '200px' },
                   }}
                 >
-                  {filterOptions.map((option) => (
-                    <MenuItem key={option.value} value={option.value}>
-                      <Radio
-                        disableRipple
-                        size="small"
-                        checked={filters?.topSellingFilter === option.value}
-                      />
-                      {option.label}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+                  <Select
+                    value={filters?.topSellingFilter}
+                    onChange={(val) =>
+                      setFilters?.((prev: any) => ({
+                        ...(prev || {}),
+                        topSellingFilter: val.target.value,
+                      }))
+                    }
+                    renderValue={(selected) => startCase(selected?.toLowerCase())}
+                    MenuProps={{
+                      PaperProps: {
+                        sx: { maxHeight: 240 },
+                      },
+                    }}
+                  >
+                    {filterOptions.map((option) => (
+                      <MenuItem key={option.value} value={option.value}>
+                        <Radio
+                          disableRipple
+                          size="small"
+                          checked={filters?.topSellingFilter === option.value}
+                        />
+                        {option.label}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                <FormControl
+                  sx={{
+                    flexShrink: 1,
+                    width: { xs: '200px' },
+                  }}
+                >
+                  <Select
+                    value={filters?.sortField}
+                    onChange={(val) =>
+                      setFilters?.((prev: any) => ({
+                        ...(prev || {}),
+                        sortField: val.target.value,
+                      }))
+                    }
+                    renderValue={(selected) => startCase(selected?.toLowerCase())}
+                    MenuProps={{
+                      PaperProps: {
+                        sx: { maxHeight: 240 },
+                      },
+                    }}
+                  >
+                    {sortFieldFilterOptions.map((option) => (
+                      <MenuItem key={option.value} value={option.value}>
+                        <Radio
+                          disableRipple
+                          size="small"
+                          checked={filters?.sortField === option.value}
+                        />
+                        {option.label}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                <FormControl
+                  sx={{
+                    flexShrink: 1,
+                    width: { xs: '200px' },
+                  }}
+                >
+                  <Select
+                    value={filters?.sortOrder}
+                    onChange={(val) =>
+                      setFilters?.((prev: any) => ({
+                        ...(prev || {}),
+                        sortOrder: val.target.value,
+                      }))
+                    }
+                    renderValue={(selected) => startCase(selected?.toLowerCase())}
+                    MenuProps={{
+                      PaperProps: {
+                        sx: { maxHeight: 240 },
+                      },
+                    }}
+                  >
+                    {sortOrderFilterOptions.map((option) => (
+                      <MenuItem key={option.value} value={option.value}>
+                        <Radio
+                          disableRipple
+                          size="small"
+                          checked={filters?.sortOrder === option.value}
+                        />
+                        {option.label}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Box>
             </Box>
             <Scrollbar>
               <Table size="small" sx={{ minWidth: 960 }}>

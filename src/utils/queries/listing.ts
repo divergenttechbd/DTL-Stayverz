@@ -24,3 +24,7 @@ export const updateListing: any = async (data: any) => {
   const endpoint = `/listings/admin/listings/${data.id}/`;
   return axios.patch(endpoint, data);
 };
+export const softDeleteListing: any = async (data: any) => {
+  const endpoint = `/listings/admin/listings/${data.id}`;
+  return axios.delete(endpoint, data);
+};

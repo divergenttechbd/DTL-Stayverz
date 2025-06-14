@@ -56,7 +56,7 @@ const TABLE_HEAD = [
   { id: 'date_joined', label: 'Joined At', width: 220 },
   { id: 'u_type', label: 'Role', width: 180 },
   { id: 'identity_verification_status', label: 'Verification Status', width: 100 },
-  { id: '', width: 88 },
+  { id: '', label: 'Action', width: 88 },
 ];
 
 const defaultFilters: IUserTableFilters = {
@@ -115,22 +115,22 @@ export default function UserListView() {
       await downloadUserCSV(
         table.selected.length
           ? {
-              ids: table.selected,
-            }
+            ids: table.selected,
+          }
           : {
-              date_joined_after: filters.date_joined_after
-                ? format(filters.date_joined_after, 'yyyy-MM-dd')
-                : null,
-              date_joined_before: filters.date_joined_before
-                ? format(filters.date_joined_before, 'yyyy-MM-dd')
-                : null,
-              u_type: filters.u_type,
-              identity_verification_status: filters.identity_verification_status,
-              search: filters.search,
-              status: filters.status === 'all' ? null : filters.status,
-              page_size: 0,
-              report_download: true,
-            }
+            date_joined_after: filters.date_joined_after
+              ? format(filters.date_joined_after, 'yyyy-MM-dd')
+              : null,
+            date_joined_before: filters.date_joined_before
+              ? format(filters.date_joined_before, 'yyyy-MM-dd')
+              : null,
+            u_type: filters.u_type,
+            identity_verification_status: filters.identity_verification_status,
+            search: filters.search,
+            status: filters.status === 'all' ? null : filters.status,
+            page_size: 0,
+            report_download: true,
+          }
       );
     } catch (e) {
       console.log(e);
@@ -147,6 +147,26 @@ export default function UserListView() {
       console.log(err);
     }
   }, []);
+
+  const handleVerify = async (id: string, status: string) => {
+    // console.log(id, status);
+    if (status === "verified") {
+      try {
+        // const res = await verifyUser(id);
+        console.log(id, status);
+      } catch (err) {
+        console.log(err);
+      }
+    }
+    else if (status === "not_verified") {
+      try {
+        // const res = await unverifyUser(id);
+        console.log(id, status);
+      } catch (err) {
+        console.log(err);
+      }
+    }
+  }
 
   useEffect(() => {
     getUserList({
@@ -218,12 +238,12 @@ export default function UserListView() {
                   >
                     {tab.value === 'all'
                       ? tableMeta.user_status_count?.reduce(
-                          (acc: number, cur: any) => acc + cur.status_count,
-                          0
-                        )
+                        (acc: number, cur: any) => acc + cur.status_count,
+                        0
+                      )
                       : tableMeta?.user_status_count?.find(
-                          (count: any) => count.status === tab.value
-                        )?.status_count || 0}
+                        (count: any) => count.status === tab.value
+                      )?.status_count || 0}
                   </Label>
                 }
               />
@@ -286,8 +306,9 @@ export default function UserListView() {
                       row={row}
                       selected={table.selected.includes(row.id)}
                       onSelectRow={() => table.onSelectRow(row.id)}
-                      onDeleteRow={() => {}}
-                      onEditRow={() => {}}
+                      onDeleteRow={() => { }}
+                      onEditRow={() => { }}
+                      onVerify={() => handleVerify(row.id, row.identity_verification_status)}
                     />
                   ))}
 

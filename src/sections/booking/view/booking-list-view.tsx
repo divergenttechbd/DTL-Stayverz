@@ -83,7 +83,7 @@ export default function BookingListView({
   userType,
   userId,
 }: BookingListViewProps) {
-  console.log('bookings ---', fromUserDetails, userType, userId);
+  // console.log('bookings ---', fromUserDetails, userType, userId);
 
   const table = useTable({
     defaultCurrentPage: 0,
@@ -142,6 +142,17 @@ export default function BookingListView({
       console.log(err);
     }
   }, []);
+
+  const handleCancel = async (id: number) => {
+    try {
+      // const res = await cancelBooking({ id: confirm.value });
+      // if (!res.success) throw res.data;
+      console.log(id);
+      getBookingList({ page: table.page + 1, page_size: table.rowsPerPage });
+    } catch (err) {
+      console.log(err);
+    }
+  };
 
   useEffect(() => {
     getBookingList({
@@ -272,8 +283,9 @@ export default function BookingListView({
                       row={row}
                       selected={table.selected.includes(row.id)}
                       onSelectRow={() => table.onSelectRow(row.id)}
-                      onDeleteRow={() => {}}
-                      onEditRow={() => {}}
+                      onDeleteRow={() => { }}
+                      onEditRow={() => { }}
+                      onCancel={() => { handleCancel(row.id) }}
                     />
                   ))}
 

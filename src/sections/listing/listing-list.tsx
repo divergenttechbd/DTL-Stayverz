@@ -9,6 +9,7 @@ import { IListingItem } from 'src/types/listing'
 // components
 import { useRouter } from 'src/routes/hook'
 //
+import { softDeleteListing } from 'src/utils/queries/listing'
 import TourItem from './listing-item'
 
 // ----------------------------------------------------------------------
@@ -36,9 +37,18 @@ export default function TourList({ tours, onPaginationChange, totalPage }: Props
     [router]
   );
 
-  const handleDelete = useCallback((id: number | string) => {
+  const handleDelete = useCallback(async (id: number | string) => {
     console.info('DELETE', id);
-  }, []);
+    try {
+      const res = await softDeleteListing({
+        id
+      });
+      if (!res.success) throw res.data;
+      router.reload();
+    } catch (err) {
+      console.log(err);
+    }
+  }, [router]);
 
   return (
     <>

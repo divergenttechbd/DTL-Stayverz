@@ -26,6 +26,7 @@ type Props = {
   row: IUserItem;
   onSelectRow: VoidFunction;
   onDeleteRow: VoidFunction;
+  onVerify: VoidFunction;
 };
 
 export default function UserTableRow({
@@ -34,6 +35,7 @@ export default function UserTableRow({
   onEditRow,
   onSelectRow,
   onDeleteRow,
+  onVerify,
 }: Props) {
   const {
     id,
@@ -96,6 +98,19 @@ export default function UserTableRow({
         </TableCell>
 
         <TableCell align="right" sx={{ px: 1, whiteSpace: 'nowrap' }}>
+          <Label
+            variant="soft"
+            onClick={onVerify}
+            sx={{ cursor: 'pointer' }}
+            color={
+              (identity_verification_status === 'verified' && 'error') ||
+              (identity_verification_status === 'not_verified' && 'success') ||
+              'default'
+            }
+          >
+            {identity_verification_status === 'verified' && 'Unverify'}
+            {identity_verification_status === 'not_verified' && 'Verify'}
+          </Label>
           <Tooltip title="Quick Edit" placement="top" arrow>
             <IconButton
               color="default"

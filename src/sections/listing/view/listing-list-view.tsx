@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
-// @mui
+// import * as XLSX from "xlsx";
 import Container from '@mui/material/Container'
 import Stack from '@mui/material/Stack'
+import Iconify from 'src/components/iconify'
+import Button from '@mui/material/Button'
 // routes
 import { paths } from 'src/routes/paths'
 // hooks
@@ -21,6 +23,7 @@ import TourFiltersResult from '../listing-filters-result'
 import TourList from '../listing-list'
 import TourSearch, { IListingItemLite } from '../listing-search'
 import TourSort from '../listing-sort'
+
 
 // ----------------------------------------------------------------------
 export const sortOptions = [
@@ -197,23 +200,51 @@ export default function TourListView({ fromUserDetails, userId }: ListingsListVi
     />
   );
 
+  // Excel export function
+  // const handleExport = () => {
+  //   const dataForExport = listData?.map((entry: any) => ({
+  //     Name: entry.user.name,
+  //     // Date: formatDate(entry.date),
+  //     "Time In": entry.time_in ? entry.time_in : "N/A",
+  //     "Time Out": entry.time_out ? entry.time_out : "N/A",
+  //     Status: entry.status || "N/A",
+  //   }));
+
+  //   const worksheet = XLSX.utils.json_to_sheet(dataForExport);
+  //   const workbook = XLSX.utils.book_new();
+  //   XLSX.utils.book_append_sheet(workbook, worksheet, "Attendance Report");
+  //   const today = new Date().toISOString().split("T")[0];
+  //   XLSX.writeFile(workbook, `attendance_report_${today}.xlsx`);
+  // };
+  
+
   return (
     <Container maxWidth={settings.themeStretch ? false : 'lg'}>
       {!fromUserDetails && (
-        <CustomBreadcrumbs
-          heading="List"
-          links={[
-            { name: 'Dashboard', href: paths.dashboard.root },
-            {
-              name: 'Tour',
-              href: paths.dashboard.listing.root,
-            },
-            { name: 'List' },
-          ]}
-          sx={{
-            mb: { xs: 3, md: 5 },
-          }}
-        />
+        <Stack
+          spacing={3}
+          justifyContent="space-between"
+          alignItems={{ xs: 'flex-end', sm: 'center' }}
+          direction={{ xs: 'column', sm: 'row' }}
+        >
+          <CustomBreadcrumbs
+            heading="List"
+            links={[
+              { name: 'Dashboard', href: paths.dashboard.root },
+              {
+                name: 'Tour',
+                href: paths.dashboard.listing.root,
+              },
+              { name: 'List' },
+            ]}
+            sx={{
+              mb: { xs: 3, md: 5 },
+            }}
+          />
+          <Button variant="contained" >
+            <Iconify icon="solar:download-bold" sx={{ marginRight: 1 }} /> Download
+          </Button>
+        </Stack>
       )}
 
       <Stack

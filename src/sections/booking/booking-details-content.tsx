@@ -10,7 +10,7 @@ import { IBookingItem } from 'src/types/booking';
 import Iconify from 'src/components/iconify';
 import { format } from 'date-fns';
 import upperFirst from 'lodash/upperFirst';
-import { Card } from '@mui/material';
+import { Button, Card, Tooltip } from '@mui/material';
 import { useBoolean } from 'src/hooks/use-boolean';
 import { getDecimalValue } from 'src/utils/format-number';
 
@@ -267,11 +267,29 @@ export default function BookingDetailsContent({ booking }: Props) {
     </Stack>
   );
 
+  const toggleInstantBooking = () => {
+    console.log("Instant Booking");
+    // setInstantBooking((prev) => !prev);
+  };
+
   return (
     <Stack sx={{ maxWidth: 720, mx: 'auto' }}>
       {renderHead}
 
-      <Divider sx={{ borderStyle: 'dashed', my: 5 }} />
+      <Divider sx={{ borderStyle: 'dashed', mt: 5, mb: 3 }} />
+
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <Tooltip title="Toggle Instant Booking" placement="top" arrow>
+          <Button
+            sx={{ mb: 5, width: 150 }}
+            color="error"
+            onClick={toggleInstantBooking}
+          >
+            Enable/Disable
+          </Button>
+        </Tooltip>
+      </Box>
+
 
       <Typography variant="h6" sx={{ marginBottom: 3 }}>
         Overview
@@ -281,6 +299,6 @@ export default function BookingDetailsContent({ booking }: Props) {
       <Divider sx={{ borderStyle: 'dashed', my: 5 }} />
 
       {renderContent}
-    </Stack>
+    </Stack >
   );
 }
