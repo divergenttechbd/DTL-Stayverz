@@ -36,3 +36,8 @@ export const downloadCSV = async (params: any) => {
     throw error;
   }
 };
+
+export const cancelBooking: any = async (data: any) => {
+  const endpoint = '/bookings/user/bookings/admin/{guest_id}/{invoice_no}/cancel/';
+  return axios.post<any>(endpoint, { params: data });
+};

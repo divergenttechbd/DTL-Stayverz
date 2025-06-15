@@ -1,11 +1,14 @@
 import { m } from 'framer-motion'
+import { useCallback } from 'react';
 // @mui
+import { Button, Card, Tooltip } from '@mui/material';
 import Box from '@mui/material/Box'
 import Divider from '@mui/material/Divider'
 import Link from '@mui/material/Link'
 import ListItemText from '@mui/material/ListItemText'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
+import Switch from '@mui/material/Switch'
 // utils
 import { IListingItem } from 'src/types/listing'
 // components
@@ -16,6 +19,7 @@ import Image from 'src/components/image'
 import Lightbox, { useLightBox } from 'src/components/lightbox'
 import Markdown from 'src/components/markdown'
 import { paths } from 'src/routes/paths'
+import { updateInstantBookingListing } from 'src/utils/queries/listing'
 
 // ----------------------------------------------------------------------
 
@@ -47,7 +51,8 @@ export default function TourDetailsContent({ listing }: Props) {
     total_rating_count,
     avg_rating,
     owner,
-    unmarried_couples_allowed
+    unmarried_couples_allowed,
+    instant_booking_allowed,
   } = listing;
 
   const slides = images.map((slide) => ({
@@ -320,6 +325,20 @@ export default function TourDetailsContent({ listing }: Props) {
     </>
   );
 
+  const toggleInstantBooking = useCallback(async () => {
+    try {
+      const res = await updateInstantBookingListing({
+        id: listing?.id,
+        instant_booking_allowed: instant_booking_allowed === false ? 'true' : 'false',
+      });
+      if (!res.success) throw res.data;
+      // getUserDetails?.();
+      // setVerificationAction('');
+    } catch (err) {
+      console.log(err);
+    }
+  }, [listing?.id, instant_booking_allowed]);
+
   return (
     <>
       {renderGallery}
@@ -328,6 +347,22 @@ export default function TourDetailsContent({ listing }: Props) {
         {renderHead}
 
         <Divider sx={{ borderStyle: 'dashed', my: 5 }} />
+
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', my: 5 }}>
+          <Tooltip title="Toggle Instant Booking" placement="top" arrow>
+            <Stack
+              sx={{
+                display: 'flex',
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Switch checked={instant_booking_allowed} onChange={toggleInstantBooking} />
+              <Typography variant="subtitle1">Instant Booking</Typography>
+            </Stack>
+          </Tooltip>
+        </Box>
 
         <Typography variant="h6" sx={{ marginBottom: 3 }}>
           Overview

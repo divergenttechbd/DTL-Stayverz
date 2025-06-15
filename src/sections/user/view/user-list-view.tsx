@@ -34,7 +34,7 @@ import {
 import { downloadUserCSV, getUsers } from 'src/utils/queries/users';
 // types
 import { IUserTableFilters, IUserTableFilterValue } from 'src/types/user';
-import { downloadCSV } from 'src/utils/queries/bookings';
+// import { downloadCSV } from 'src/utils/queries/bookings';
 import { Stack } from '@mui/material';
 //
 import UserTableRow from '../user-table-row';

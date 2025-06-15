@@ -59,6 +59,7 @@ const TABLE_HEAD = [
   { id: 'listing', label: 'Listing', width: 250 },
   { id: 'confirmation_code', label: 'Confirmation Code', width: 100 },
   { id: 'paid_amount', label: 'Guest Paid', width: 100 },
+  { id: '', label: 'Review Details', width: 100 },
   { id: '', label: 'Action', width: 88 },
 ];
 const defaultFilters: IBookingTableFilters = {
@@ -145,7 +146,7 @@ export default function BookingListView({
 
   const handleCancel = async (id: number) => {
     try {
-      // const res = await cancelBooking({ id: confirm.value });
+      // const res = await cancelBooking({ id: id,  });
       // if (!res.success) throw res.data;
       console.log(id);
       getBookingList({ page: table.page + 1, page_size: table.rowsPerPage });
@@ -153,6 +154,17 @@ export default function BookingListView({
       console.log(err);
     }
   };
+
+  //   const handleCancel = async (guest_id: number, invoice_no: string) => {
+  //   try {
+  //     const res = await cancelBooking({ guest_id: guest_id, invoice_no: invoice_no });
+  //     if (!res.success) throw res.data;
+  //     console.log(id);
+  //     getBookingList({ page: table.page + 1, page_size: table.rowsPerPage });
+  //   } catch (err) {
+  //     console.log(err);
+  //   }
+  // };
 
   useEffect(() => {
     getBookingList({

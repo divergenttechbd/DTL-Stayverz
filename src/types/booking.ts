@@ -78,4 +78,15 @@ export type IBookingItem = {
     };
     address: string;
   };
+  reviews: {
+    booking: number;
+    id: number;
+    is_guest_review: boolean;
+    is_host_review: boolean;
+    listing: number;
+    rating: number;
+    review: string;
+    review_by: number;
+    review_for: number;
+  }[];
 };

@@ -67,6 +67,7 @@ export type IListingItem = {
   avg_rating: number;
   total_rating_count: number;
   total_booking_count: number;
+  instant_booking_allowed: boolean;
   latitude: number;
   longitude: number;
   category: {

@@ -5,6 +5,7 @@ import TableRow from '@mui/material/TableRow';
 import Checkbox from '@mui/material/Checkbox';
 import TableCell from '@mui/material/TableCell';
 import ListItemText from '@mui/material/ListItemText';
+import Box from '@mui/material/Box'
 // hooks
 import { useRouter } from 'src/routes/hook';
 import { format } from 'date-fns';
@@ -13,6 +14,7 @@ import { Link } from '@mui/material';
 import { paths } from 'src/routes/paths';
 import { getDecimalValue } from 'src/utils/format-number';
 //
+import Iconify from 'src/components/iconify';
 
 type Props = {
   selected: boolean;
@@ -44,6 +46,7 @@ export default function BookingTableRow({
     adult_count,
     children_count,
     infant_count,
+    reviews,
   } = row;
 
   const guestCounts = [
@@ -110,7 +113,20 @@ export default function BookingTableRow({
         <Link href={`/booking/${id}/details`}>{reservation_code}</Link>
       </TableCell>
       <TableCell sx={{ whiteSpace: 'nowrap' }}>৳ {getDecimalValue(paid_amount)}</TableCell>
-
+      <TableCell sx={{ whiteSpace: 'nowrap' }}>
+        {reviews.map((r) => (
+          <div key={r.id} className="p-4 border rounded shadow-sm">
+            <div><strong>Type:</strong> {r.is_guest_review ? "Guest Review" : "Host Review"}</div>
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <div>
+                <strong>Rating:</strong> {r.rating}
+              </div>
+              <Iconify icon="eva:star-fill" sx={{ color: 'warning.main' }} />
+            </Box>
+            <div><strong>Review:</strong> {r.review}</div>
+          </div>
+        ))}
+      </TableCell>
       <TableCell align="right" sx={{ px: 1, whiteSpace: 'nowrap' }}>
         <Tooltip title="Quick Edit" placement="top" arrow>
           <Button

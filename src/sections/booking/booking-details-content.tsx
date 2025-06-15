@@ -4,6 +4,7 @@ import Stack from '@mui/material/Stack';
 import Divider from '@mui/material/Divider';
 import Typography from '@mui/material/Typography';
 import ListItemText from '@mui/material/ListItemText';
+import Switch from '@mui/material/Switch'
 // utils
 import { IBookingItem } from 'src/types/booking';
 // components
@@ -40,6 +41,8 @@ export default function BookingDetailsContent({ booking }: Props) {
     guest_service_charge,
     host_service_charge,
   } = booking;
+
+  console.log('booking', booking);
 
   const showPriceBreakdown = useBoolean();
   const showPriceBreakdownForHost = useBoolean();
@@ -267,29 +270,25 @@ export default function BookingDetailsContent({ booking }: Props) {
     </Stack>
   );
 
-  const toggleInstantBooking = () => {
-    console.log("Instant Booking");
-    // setInstantBooking((prev) => !prev);
-  };
+  // const toggleInstantBooking = useCallback(async () => {
+  //   try {
+  //     const res = await updateUser({
+  //       id: booking?.id,
+  //       user_status: booking?.status === 'active' ? 'restricted' : 'active',
+  //     });
+  //     if (!res.success) throw res.data;
+  //     getUserDetails?.();
+  //     setVerificationAction('');
+  //   } catch (err) {
+  //     console.log(err);
+  //   }
+  // }, [currentUser?.id, currentUser?.status, getUserDetails]);
 
   return (
     <Stack sx={{ maxWidth: 720, mx: 'auto' }}>
       {renderHead}
 
-      <Divider sx={{ borderStyle: 'dashed', mt: 5, mb: 3 }} />
-
-      <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-        <Tooltip title="Toggle Instant Booking" placement="top" arrow>
-          <Button
-            sx={{ mb: 5, width: 150 }}
-            color="error"
-            onClick={toggleInstantBooking}
-          >
-            Enable/Disable
-          </Button>
-        </Tooltip>
-      </Box>
-
+      <Divider sx={{ borderStyle: 'dashed', my: 5 }} />
 
       <Typography variant="h6" sx={{ marginBottom: 3 }}>
         Overview
