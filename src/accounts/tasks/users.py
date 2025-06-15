@@ -7,6 +7,8 @@ from django.conf import settings
 
 from celery import shared_task
 from django.utils import timezone
+from requests import RequestException
+
 from accounts.models import User, SuperhostStatusHistory
 from base.type_choices import UserTypeOption
 
@@ -33,16 +35,19 @@ def send_sms(username: str, message: str) -> None:
     sms_url = f"http://192.168.7.180:8080/bulk_sms_bd/sms_send_2?msisdn={username}&message={message}"
 
     # Send the request to the Bulk SMS URL
-    res = requests.get(sms_url)  # Using GET since the URL is formatted for GET requests
+    try:
+        res = requests.get(sms_url, timeout=5)  # Add timeout to avoid hanging forever
 
-    print(message)
-    # Optionally, check for successful response
-    if res.status_code == 200:
-        print("SMS sent successfully.")
-    else:
-        print(f"Failed to send SMS. Status Code: {res.status_code}")
+        print(message)
 
-    return
+        if res.status_code == 200:
+            print("SMS sent successfully.")
+        else:
+            print(f"Failed to send SMS. Status Code: {res.status_code}")
+
+    except RequestException as e:
+        # Handle any request-related exception (e.g., ConnectionError, Timeout, etc.)
+        print(f"Error sending SMS: {e}")
 
 
 @shared_task(name="assess_and_log_quarterly_superhost_status")

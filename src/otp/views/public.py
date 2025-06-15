@@ -52,6 +52,7 @@ class PublicOtpRequestAPIView(views.APIView):
 
             return Response({"message": message}, status=status.HTTP_400_BAD_REQUEST)
 
+        print(" ===== otp ====")
         if not OtpService.create_otp(
             username=username, scope=scope, is_sms=True, to_phone_number=phone_number
         ):

@@ -11,7 +11,7 @@ from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.generics import ListCreateAPIView, views
+from rest_framework.generics import ListCreateAPIView, views, ListAPIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -80,6 +80,56 @@ class GuestBookingListCreateAPIView(ListCreateAPIView):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
+
+
+class GuestPendingReviewsAPIView(ListAPIView):
+    """
+    Retrieves a list of bookings for the authenticated guest that have been
+    completed but for which the guest has not yet submitted a review.
+    A booking is considered eligible for review if its check-out date has passed.
+    """
+    permission_classes = (IsAuthenticated, IsGuestUser)
+    serializer_class = BookingSerializer
+    swagger_tags = ["Gust Bookings"]
+    http_method_names = ["get"]
+
+
+
+    def get_queryset(self):
+        """
+        Returns bookings where:
+        - The booking belongs to the current guest.
+        - The booking status is 'CONFIRMED'.
+        - The guest has not yet submitted a review ('guest_review_done' is False).
+        - The check-out date is in the past, meaning the stay is complete.
+        """
+        print(" reviews --- ")
+        today = datetime.now().date()
+        return (
+            Booking.objects.filter(
+                guest_id=self.request.user.id,
+                status=BookingStatusOption.CONFIRMED,
+                guest_review_done=False,
+                check_out__lt=today,
+            )
+            .select_related("listing")
+            .order_by("-check_out")
+        )
+
+    def get_serializer(self, *args, **kwargs):
+        """
+        Customize the serializer to return only the fields necessary for a user
+        to identify the booking they need to review.
+        """
+        kwargs["context"] = self.get_serializer_context()
+        kwargs["fields"] = [
+            "invoice_no",
+            "listing",
+            "check_in",
+            "check_out",
+        ]
+        kwargs["r_method_fields"] = ["listing"]
+        return self.serializer_class(*args, **kwargs)
 
 class ValidateCouponAPIView(APIView):
     permission_classes = [IsAuthenticated]  # User must be logged in to check a coupon, typically

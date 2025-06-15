@@ -19,6 +19,8 @@ class OtpService:
     ) -> bool:
         key = f"{username}_{scope}_otp"
         otp = random.randint(10000, 99999)
+
+        print(otp)
         if not set_cache(key=key, value=otp, ttl=ttl):
             return False
 

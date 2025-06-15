@@ -83,7 +83,7 @@ class UserSSLCommerzOrderPaymentView(CreateAPIView):
         }
 
 
-        print(sslcommerz_data, " ----------- ")
+        print(sslcommerz_data, " -----------sslz ")
 
         response = sslcommerz_payment_create(
             data=sslcommerz_data, customer=request.user

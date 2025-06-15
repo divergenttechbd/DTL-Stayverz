@@ -6,6 +6,7 @@ from bookings.views.user import (
     GuestBookingReviewAPIView,
     GuestBookingReviewRetrieveAPIView,
     GuestBookingCancelAPIView, ValidateCouponAPIView, DownloadInvoiceAPIView, GuestBookingCancelAdminAPIView,
+    GuestPendingReviewsAPIView,
 )
 
 app_name = "user"
@@ -15,6 +16,12 @@ urlpatterns = [
         "bookings/",
         GuestBookingListCreateAPIView.as_view(),
         name="booking_list_create",
+    ),
+
+    path(
+        "bookings/pending-reviews/",
+        GuestPendingReviewsAPIView.as_view(),
+        name="booking_pending_reviews",
     ),
     path('validate-coupon/', ValidateCouponAPIView.as_view(), name='validate_coupon'),
     path(
@@ -43,6 +50,8 @@ urlpatterns = [
         GuestBookingReviewRetrieveAPIView.as_view(),
         name="retrieve_booking_review",
     ),
+
+
 
     path('bookings/<str:invoice_no>/download-invoice/', DownloadInvoiceAPIView.as_view(), name='download_booking_invoice')
 ]

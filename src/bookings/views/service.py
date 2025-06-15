@@ -490,7 +490,7 @@ class GuestBookingProcess:
             print(f"Guest {user.username} meets good track record requirement for listing {listing_obj.id}.")
 
         try:
-            from_date_str = request_data.get("check_in");
+            from_date_str = request_data.get("check_in")
             to_date_str = request_data.get("check_out")
             if not from_date_str or not to_date_str: return {"status": 400,
                                                              "message": "Check-in and Check-out dates are required.",
@@ -507,11 +507,15 @@ class GuestBookingProcess:
         if number_of_nights <= 0: return {"status": 400, "message": "Booking must be for at least one night.",
                                           "data": None}
 
-        date_filter = {"from_date": from_date, "to_date": to_date}
+        pricing_end_date = to_date - timedelta(days=1)
+        pricing_date_filter = {"from_date": from_date, "to_date": pricing_end_date}
+        original_date_range_for_validation = {"from_date": from_date, "to_date": to_date}
+
+        # date_filter = {"from_date": from_date, "to_date": to_date}
 
         # --- 2. Get Raw Calendar Data & Apply Length-of-Stay (LoS) Discount to Daily Rates ---
         calendar_data_process = ListingCalendarDataProcess()
-        raw_calendar_data_for_period = calendar_data_process(date_filter, listing_id)
+        raw_calendar_data_for_period = calendar_data_process(pricing_date_filter, listing_id)
         if not raw_calendar_data_for_period:
             return {"status": 400, "message": "No availability or pricing information for selected dates.",
                     "data": None}
@@ -565,7 +569,7 @@ class GuestBookingProcess:
         # We pass `los_discounted_calendar_data` where each day's "price" is already LoS discounted.
         checkout_data_result = checkout_calculator(
             booking_date_info=los_discounted_calendar_data.copy(),
-            date_range=date_filter,
+            date_range=original_date_range_for_validation,
             instance=listing_obj,
         )
         if checkout_data_result["status"] != 200: return checkout_data_result
