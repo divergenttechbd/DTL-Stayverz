@@ -62,16 +62,18 @@ class MyReferralLinkAPIView(views.APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        referral, created = Referral.objects.get_or_create(
+        referral_template, created = Referral.objects.get_or_create(
             referrer=request.user,
             referral_type=referral_type_to_generate,
-            status=ReferralStatus.PENDING,  # Only find/create PENDING, unused ones
-            referred_user__isnull=True,  # Ensure it's not already assigned to a referred user
-            defaults={'max_rewardable_bookings': 3}  # Set default if creating new
+            referred_user__isnull=True,  # This ensures we always get the template link
+            defaults={
+                'status': ReferralStatus.PENDING,
+                'max_rewardable_bookings': 3  # Set defaults only if creating new
+            }
         )
         # If not created, it means an existing PENDING link for this type was found.
 
-        serializer = ReferralSerializer(referral, context={'request': request})
+        serializer = ReferralSerializer(referral_template, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 

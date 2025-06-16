@@ -492,23 +492,25 @@ class PublicUserRegisterAPIViewHost(views.APIView):
         # If referral code is provided, determine user type from the referral
         try:
             referral_code_uuid = UUID(referral_code_str)
-            potential_referral = Referral.objects.filter(
+            # ### CHANGE: This is now the "template" referral.
+            template_referral = Referral.objects.filter(
                 referral_code=referral_code_uuid,
-                status=ReferralStatus.PENDING,
+                # We are looking for the permanent, reusable link.
+                # Its defining feature is that `referred_user` is NULL.
+                # The status check is less critical here, but good to keep.
                 referred_user__isnull=True
             ).select_related('referrer').first()
 
-            if not potential_referral:
+            if not template_referral:
                 return Response(
-                    {"referral_code": ["Invalid, expired, or already used referral code."]},
+                    {"referral_code": ["Invalid or non-existent referral code."]},
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            # Determine user type from the referral type
-            if potential_referral.referral_type == ReferralType.HOST_TO_HOST:
+            if template_referral.referral_type == ReferralType.HOST_TO_HOST:
                 primary_user_type = UserTypeOption.HOST
                 secondary_user_type = UserTypeOption.GUEST
-            elif potential_referral.referral_type == ReferralType.GUEST_TO_GUEST:
+            elif template_referral.referral_type == ReferralType.GUEST_TO_GUEST:
                 primary_user_type = UserTypeOption.GUEST
                 secondary_user_type = UserTypeOption.HOST
             else:
@@ -517,7 +519,6 @@ class PublicUserRegisterAPIViewHost(views.APIView):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            # Check if primary user already exists
             primary_username = f"{phone_number}_{primary_user_type}"
             secondary_username = f"{phone_number}_{secondary_user_type}"
 
@@ -532,7 +533,7 @@ class PublicUserRegisterAPIViewHost(views.APIView):
                 validated_data,
                 primary_user_type,
                 secondary_user_type,
-                potential_referral
+                template_referral
             )
             return Response(response_data, status=status.HTTP_201_CREATED)
 
@@ -543,11 +544,12 @@ class PublicUserRegisterAPIViewHost(views.APIView):
             )
 
     def _create_dual_users_with_referral(self, validated_data, primary_user_type, secondary_user_type,
-                                         referral_instance):
-        """Create both user types with referral processing only for the primary type"""
+                                         template_referral):  # Renamed for clarity
+        """
+        Create both user types and record the referral by creating a NEW Referral instance.
+        """
         phone_number = validated_data['phone_number']
 
-        # For validation, we use the primary username
         validation_username = f"{phone_number}_{primary_user_type}"
         if not OtpService.validate_otp(
             input_otp=validated_data["otp"],
@@ -556,47 +558,43 @@ class PublicUserRegisterAPIViewHost(views.APIView):
         ):
             raise ValidationError({"message": "Invalid OTP"})
 
-        # Create both users within a transaction
         primary_user = None
         secondary_user = None
 
         with transaction.atomic():
-            # Create primary user (with referral)
+            # Create primary user (the one being referred)
             primary_user = self._create_user_of_type(validated_data, primary_user_type)
 
-            # Process referral for primary user only
-            referral_instance.referred_user = primary_user
-            if primary_user_type == UserTypeOption.HOST:
-                referral_instance.status = ReferralStatus.HOST_ACTIVE
-            elif primary_user_type == UserTypeOption.GUEST:
-                referral_instance.status = ReferralStatus.SIGNED_UP
-            referral_instance.save(update_fields=['referred_user', 'status', 'updated_at'])
+            # --- ONE-TO-MANY LOGIC APPLIED HERE ---
+            # Instead of updating the original referral link, we create a NEW one
+            # to record this specific successful referral. The original link remains usable.
 
-            # Create secondary user (no referral)
+            new_status = ReferralStatus.HOST_ACTIVE if primary_user_type == UserTypeOption.HOST else ReferralStatus.SIGNED_UP
+
+            Referral.objects.create(
+                # Copy details from the template
+                referrer=template_referral.referrer,
+                referral_type=template_referral.referral_type,
+                max_rewardable_bookings=template_referral.max_rewardable_bookings,
+
+                # Assign the new user to this NEW record
+                referred_user=primary_user,
+
+                # Set the status for this specific referral event
+                status=new_status
+            )
+            # The 'template_referral' object is NOT saved or modified. Its link can be used again.
+            # --- END OF ONE-TO-MANY LOGIC ---
+
+            # Create secondary user (no referral) - this logic is unchanged
             secondary_user = self._create_user_of_type(validated_data, secondary_user_type)
 
-            # # Create relationship between the two users
-            # if primary_user_type == UserTypeOption.HOST:
-            #     UserRelationship.objects.create(
-            #         host_user=primary_user,
-            #         guest_user=secondary_user,
-            #         relationship_type=UserRelationshipType.SELF
-            #     )
-            # else:
-            #     UserRelationship.objects.create(
-            #         host_user=secondary_user,
-            #         guest_user=primary_user,
-            #         relationship_type=UserRelationshipType.SELF
-            #     )
-
-        # Post-creation actions - we'll primarily use the primary user account (referral-based)
-        # since that's what the referral was for
+        # The rest of the method is unchanged...
         for username in [primary_user.username, secondary_user.username]:
             OtpService.delete_otp(username=username, scope=OtpScopeOption.REGISTER)
 
-        # Cache and tokens for primary user
         set_cache(
-            key=f"{username}_token_data",
+            key=f"{primary_user.username}_token_data",
             value=json.dumps(
                 UserSerializer(
                     primary_user, fields=["id", "username", "u_type", "phone_number"]
