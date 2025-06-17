@@ -32,3 +32,7 @@ export const updateInstantBookingListing: any = async (data: any) => {
   const endpoint = `/listings/admin/listings/${data.id}/`;
   return axios.put(endpoint, data);
 };
+export const getDistrictPoints: any = async (data: any) => {
+  const endpoint = "/maps/get-district-points/";
+  return axios.get<any>(endpoint, { params: data });
+};

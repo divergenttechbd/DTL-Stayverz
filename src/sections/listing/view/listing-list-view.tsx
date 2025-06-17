@@ -1,29 +1,27 @@
-import { useCallback, useEffect, useState } from 'react'
-// import * as XLSX from "xlsx";
-import Container from '@mui/material/Container'
-import Stack from '@mui/material/Stack'
-import Iconify from 'src/components/iconify'
-import Button from '@mui/material/Button'
+import { useCallback, useEffect, useState } from 'react';
+import Container from '@mui/material/Container';
+import Stack from '@mui/material/Stack';
+import Iconify from 'src/components/iconify';
+import Button from '@mui/material/Button';
 // routes
-import { paths } from 'src/routes/paths'
+import { paths } from 'src/routes/paths';
 // hooks
-import { useBoolean } from 'src/hooks/use-boolean'
+import { useBoolean } from 'src/hooks/use-boolean';
 // utils
 // assets
-import CustomBreadcrumbs from 'src/components/custom-breadcrumbs'
-import EmptyContent from 'src/components/empty-content'
-import { useSettingsContext } from 'src/components/settings'
+import CustomBreadcrumbs from 'src/components/custom-breadcrumbs';
+import EmptyContent from 'src/components/empty-content';
+import { useSettingsContext } from 'src/components/settings';
 // types
-import { IListingFilters, IListingItem, ITourFilterValue } from 'src/types/listing'
+import { IListingFilters, IListingItem, ITourFilterValue } from 'src/types/listing';
 //
-import { format } from 'date-fns'
-import { getListingCategories, getListings, getListingsLite } from 'src/utils/queries/listing'
-import TourFilters from '../listing-filters'
-import TourFiltersResult from '../listing-filters-result'
-import TourList from '../listing-list'
-import TourSearch, { IListingItemLite } from '../listing-search'
-import TourSort from '../listing-sort'
-
+import { format } from 'date-fns';
+import { getListingCategories, getListings, getListingsLite } from 'src/utils/queries/listing';
+import TourFilters from '../listing-filters';
+import TourFiltersResult from '../listing-filters-result';
+import TourList from '../listing-list';
+import TourSearch, { IListingItemLite } from '../listing-search';
+import TourSort from '../listing-sort';
 
 // ----------------------------------------------------------------------
 export const sortOptions = [
@@ -42,6 +40,8 @@ const defaultFilters: IListingFilters = {
   page: 1,
   sort_by: 'latest',
   host: null,
+  latitude: '',
+  longitude: '',
 };
 
 // ----------------------------------------------------------------------
@@ -59,7 +59,7 @@ export default function TourListView({ fromUserDetails, userId }: ListingsListVi
   const openFilters = useBoolean();
 
   const [listData, setListData] = useState<IListingItem[]>([]);
-  console.log('listData', listData);
+  // console.log('listData', listData);
   const [listMeta, setListMeta] = useState<any>();
   const [categoryOptions, setCategoryOptions] = useState<
     {
@@ -73,6 +73,7 @@ export default function TourListView({ fromUserDetails, userId }: ListingsListVi
   });
 
   const [filters, setFilters] = useState(defaultFilters);
+  console.log('filters', filters);
 
   const getListingList = useCallback(async (data: any) => {
     try {
@@ -103,6 +104,8 @@ export default function TourListView({ fromUserDetails, userId }: ListingsListVi
       page: filters.page,
       sort_by: filters.sort_by,
       host: userId || filters.host?.value,
+      latitude: filters.latitude,
+      longitude: filters.longitude,
     });
   }, [filters, getListingList, userId]);
 
@@ -201,21 +204,6 @@ export default function TourListView({ fromUserDetails, userId }: ListingsListVi
     />
   );
 
-  // Excel export function
-  // const handleExport = () => {
-  //   const dataForExport = listData?.map((entry: any) => ({
-  //     Title: entry.title,
-  //     Address: entry.address
-  //   }));
-
-  //   const worksheet = XLSX.utils.json_to_sheet(dataForExport);
-  //   const workbook = XLSX.utils.book_new();
-  //   XLSX.utils.book_append_sheet(workbook, worksheet, "Tour List Report");
-  //   const today = new Date().toISOString().split("T")[0];
-  //   XLSX.writeFile(workbook, `tour_list_report_${today}.xlsx`);
-  // };
-
-
   return (
     <Container maxWidth={settings.themeStretch ? false : 'lg'}>
       {!fromUserDetails && (
@@ -239,9 +227,6 @@ export default function TourListView({ fromUserDetails, userId }: ListingsListVi
               mb: { xs: 3, md: 5 },
             }}
           />
-          {/* <Button variant="contained" onClick={handleExport}>
-            <Iconify icon="solar:download-bold" sx={{ marginRight: 1 }} /> Download
-          </Button> */}
         </Stack>
       )}
 

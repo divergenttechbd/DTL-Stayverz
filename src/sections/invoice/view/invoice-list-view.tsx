@@ -1,5 +1,6 @@
 import isEqual from 'lodash/isEqual';
 import { useState, useCallback, useEffect } from 'react';
+import * as XLSX from 'xlsx';
 // @mui
 import { alpha } from '@mui/material/styles';
 import Tab from '@mui/material/Tab';
@@ -199,16 +200,57 @@ export default function BookingListView() {
     getBookingList();
   }, [filters, getBookingList]);
 
+  // Excel export function
+  const handleExport = async () => {
+    try {
+      const res = await getBookings({ transactions: true, page: 1, page_size: 100000000 });
+      if (!res.success) throw res.data;
+      const reportData = res.data;
+      console.log('reportData', reportData);
+
+      const dataForExport = reportData?.map((entry: any) => ({
+        Host: entry?.host?.full_name,
+        'Host Number': entry?.host?.phone_number,
+        'Check-In': entry?.check_in,
+        'Check-Out': entry?.check_out,
+        Booked: entry?.created_at,
+        Status: entry?.guest_payment_status,
+        Listing: entry?.listing?.title,
+      }));
+
+      const worksheet = XLSX.utils.json_to_sheet(dataForExport);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Invoice List Report');
+      const today = new Date().toISOString().split('T')[0];
+      XLSX.writeFile(workbook, `invoice_list_report_${today}.xlsx`);
+    } catch (err) {
+      console.log(err);
+    }
+  };
+
   return (
     <>
       <Container maxWidth={settings.themeStretch ? false : 'lg'}>
-        <CustomBreadcrumbs
-          heading="List"
-          links={[{ name: 'Dashboard', href: paths.dashboard.root }, { name: 'Transaction List' }]}
-          sx={{
-            mb: { xs: 3, md: 5 },
-          }}
-        />
+        <Stack
+          spacing={3}
+          justifyContent="space-between"
+          alignItems={{ xs: 'flex-end', sm: 'center' }}
+          direction={{ xs: 'column', sm: 'row' }}
+        >
+          <CustomBreadcrumbs
+            heading="List"
+            links={[
+              { name: 'Dashboard', href: paths.dashboard.root },
+              { name: 'Transaction List' },
+            ]}
+            sx={{
+              mb: { xs: 3, md: 5 },
+            }}
+          />
+          <Button variant="contained" onClick={handleExport}>
+            <Iconify icon="solar:download-bold" sx={{ marginRight: 1 }} /> Download
+          </Button>
+        </Stack>
         <Card
           sx={{
             mb: { xs: 3, md: 5 },

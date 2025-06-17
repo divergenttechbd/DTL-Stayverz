@@ -12,6 +12,8 @@ export type IListingFilters = {
   category: string | number;
   sort_by: string;
   host: { label: string; value: string } | null;
+  latitude: string;
+  longitude: string;
 };
 
 // ----------------------------------------------------------------------

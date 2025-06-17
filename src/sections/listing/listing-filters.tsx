@@ -1,16 +1,16 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react';
 // @mui
-import Badge from '@mui/material/Badge'
-import Button from '@mui/material/Button'
-import Divider from '@mui/material/Divider'
-import Drawer from '@mui/material/Drawer'
-import IconButton from '@mui/material/IconButton'
-import Stack from '@mui/material/Stack'
-import Tooltip from '@mui/material/Tooltip'
-import Typography from '@mui/material/Typography'
-import { DatePicker } from '@mui/x-date-pickers/DatePicker'
+import Badge from '@mui/material/Badge';
+import Button from '@mui/material/Button';
+import Divider from '@mui/material/Divider';
+import Drawer from '@mui/material/Drawer';
+import IconButton from '@mui/material/IconButton';
+import Stack from '@mui/material/Stack';
+import Tooltip from '@mui/material/Tooltip';
+import Typography from '@mui/material/Typography';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 // types
-import { IListingFilters, ITourFilterValue } from 'src/types/listing'
+import { IListingFilters, ITourFilterValue } from 'src/types/listing';
 // components
 import {
   Autocomplete,
@@ -22,12 +22,14 @@ import {
   Select,
   SelectChangeEvent,
   TextField,
-} from '@mui/material'
-import startCase from 'lodash/startCase'
-import Iconify from 'src/components/iconify'
-import Scrollbar from 'src/components/scrollbar'
-import { IUserItem } from 'src/types/user'
-import { getUsers } from 'src/utils/queries/users'
+} from '@mui/material';
+import InputAdornment from '@mui/material/InputAdornment';
+import startCase from 'lodash/startCase';
+import Iconify from 'src/components/iconify';
+import Scrollbar from 'src/components/scrollbar';
+import { IUserItem } from 'src/types/user';
+import { getUsers } from 'src/utils/queries/users';
+import { getDistrictPoints } from 'src/utils/queries/listing';
 
 const verificationOptions = [
   { label: 'Verified', value: 'verified' },
@@ -58,6 +60,8 @@ type TourFilterProps = {
   showHostDropDown?: boolean;
 };
 
+type DistrictOption = { label: string; id: number };
+
 export default function TourFilters({
   open,
   onOpen,
@@ -72,9 +76,79 @@ export default function TourFilters({
   //
   dateError,
   //
-  showHostDropDown=true
+  showHostDropDown = true,
 }: TourFilterProps) {
   const [hosts, setHosts] = useState<{ label: string; value: string }[]>([]);
+  const [selectedDistrict, setSelectedDistrict] = useState<DistrictOption | null>(null);
+  console.log('selectedDistrict', selectedDistrict);
+
+  const options = [
+    { label: 'Bagerhat', id: 1 },
+    { label: 'Bandarban', id: 2 },
+    { label: 'Barguna', id: 3 },
+    { label: 'Barisal', id: 4 },
+    { label: 'Bhola', id: 5 },
+    { label: 'Bogura', id: 6 },
+    { label: 'Brahmanbaria', id: 7 },
+    { label: 'Chandpur', id: 8 },
+    { label: 'Chattogram', id: 9 },
+    { label: 'Chuadanga', id: 10 },
+    { label: "Cox's Bazar", id: 11 },
+    { label: 'Cumilla', id: 12 },
+    { label: 'Dhaka', id: 13 },
+    { label: 'Dinajpur', id: 14 },
+    { label: 'Faridpur', id: 15 },
+    { label: 'Feni', id: 16 },
+    { label: 'Gaibandha', id: 17 },
+    { label: 'Gazipur', id: 18 },
+    { label: 'Gopalganj', id: 19 },
+    { label: 'Habiganj', id: 20 },
+    { label: 'Jamalpur', id: 21 },
+    { label: 'Jashore', id: 22 },
+    { label: 'Jhalokati', id: 23 },
+    { label: 'Jhenaidah', id: 24 },
+    { label: 'Joypurhat', id: 25 },
+    { label: 'Khagrachari', id: 26 },
+    { label: 'Khulna', id: 27 },
+    { label: 'Kishoreganj', id: 28 },
+    { label: 'Kurigram', id: 29 },
+    { label: 'Kushtia', id: 30 },
+    { label: 'Lakshmipur', id: 31 },
+    { label: 'Lalmonirhat', id: 32 },
+    { label: 'Madaripur', id: 33 },
+    { label: 'Magura', id: 34 },
+    { label: 'Manikganj', id: 35 },
+    { label: 'Meherpur', id: 36 },
+    { label: 'Moulvibazar', id: 37 },
+    { label: 'Munshiganj', id: 38 },
+    { label: 'Mymensingh', id: 39 },
+    { label: 'Naogaon', id: 40 },
+    { label: 'Narail', id: 41 },
+    { label: 'Narayanganj', id: 42 },
+    { label: 'Narsingdi', id: 43 },
+    { label: 'Natore', id: 44 },
+    { label: 'Netrokona', id: 45 },
+    { label: 'Nilphamari', id: 46 },
+    { label: 'Noakhali', id: 47 },
+    { label: 'Pabna', id: 48 },
+    { label: 'Panchagarh', id: 49 },
+    { label: 'Patuakhali', id: 50 },
+    { label: 'Pirojpur', id: 51 },
+    { label: 'Rajbari', id: 52 },
+    { label: 'Rajshahi', id: 53 },
+    { label: 'Rangamati', id: 54 },
+    { label: 'Rangpur', id: 55 },
+    { label: 'Satkhira', id: 56 },
+    { label: 'Shariatpur', id: 57 },
+    { label: 'Sherpur', id: 58 },
+    { label: 'Sirajganj', id: 59 },
+    { label: 'Sunamganj', id: 60 },
+    { label: 'Sylhet', id: 61 },
+    { label: 'Tangail', id: 62 },
+    { label: 'Thakurgaon', id: 63 },
+    { label: 'Chapainawabganj', id: 64 },
+  ];
+
   // host filter values
   const getHostsForDropdown = useCallback(async () => {
     try {
@@ -94,6 +168,14 @@ export default function TourFilters({
   useEffect(() => {
     getHostsForDropdown();
   }, [getHostsForDropdown]);
+
+  // filters handler
+  const handleFilterAreaSearch = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      onFilters('verification_status', event.target.value);
+    },
+    [onFilters]
+  );
 
   // filters handler
   const handleFilterStartDate = useCallback(
@@ -142,6 +224,29 @@ export default function TourFilters({
     [onFilters]
   );
 
+  const handleGeDistrictPoints = async (value: { label: string; id: number } | null) => {
+    if (!value) return;
+
+    try {
+      const res = await getDistrictPoints({ q: value.label });
+      if (!res.success) throw res.data;
+      console.log('geo coords', res.data[0].center.coordinates);
+      const coordsData = res.data[0].center.coordinates;
+
+      if (Array.isArray(coordsData) && coordsData.length === 2) {
+        console.log('=====================');
+        const [longitude, latitude] = coordsData;
+        console.log('------------------', latitude);
+        console.log('------------------', longitude);
+        onFilters('latitude', latitude);
+        onFilters('longitude', longitude);
+      }
+      console.log('-----------------------------');
+    } catch (err) {
+      console.log(err);
+    }
+  };
+
   // filters component
   const renderHead = (
     <Stack
@@ -164,6 +269,27 @@ export default function TourFilters({
         <Iconify icon="mingcute:close-line" />
       </IconButton>
     </Stack>
+  );
+
+  const renderAreaSearch = (
+    <FormControl fullWidth>
+      <Autocomplete
+        fullWidth
+        options={options}
+        value={selectedDistrict}
+        onChange={(event, newValue) => {
+          setSelectedDistrict(newValue);
+          handleGeDistrictPoints(newValue);
+          console.log('Selected:', newValue); // you can also call a handler here
+        }}
+        getOptionLabel={(option) => option.label}
+        isOptionEqualToValue={(option, value) => option.id === value?.id}
+        renderInput={(params) => (
+          <TextField {...params} label="Search Area..." variant="outlined" />
+        )}
+        renderOption={(props, option) => <li {...props}>{option.label}</li>}
+      />
+    </FormControl>
   );
 
   const renderDateRange = (
@@ -288,9 +414,9 @@ export default function TourFilters({
   const renderHostFilter = (
     <FormControl fullWidth>
       <Autocomplete
-        onChange={(event, newValue) => {
-          handleFilterService(newValue);
-        }}
+        // onChange={(event, newValue) => {
+        //   handleFilterService(newValue);
+        // }}
         value={filters.host ? filters.host : null}
         fullWidth
         options={hosts}
@@ -305,8 +431,8 @@ export default function TourFilters({
         )}
         renderOption={(props, option, { inputValue }) => <li {...props}>{option.label}</li>}
       />
-  </FormControl>
-  )
+    </FormControl>
+  );
 
   return (
     <>
@@ -340,6 +466,7 @@ export default function TourFilters({
 
         <Scrollbar sx={{ px: 2.5, py: 3 }}>
           <Stack spacing={3}>
+            {renderAreaSearch}
             {renderDateRange}
             {renderListingType}
             {renderStatus}

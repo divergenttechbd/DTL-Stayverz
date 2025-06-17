@@ -1,10 +1,12 @@
 import isEqual from 'lodash/isEqual';
 import { useState, useCallback, useEffect } from 'react';
+import * as XLSX from 'xlsx';
 import Card from '@mui/material/Card';
 import Table from '@mui/material/Table';
 import Button from '@mui/material/Button';
 import Tooltip from '@mui/material/Tooltip';
 import Container from '@mui/material/Container';
+import Box from '@mui/material/Box';
 import TableBody from '@mui/material/TableBody';
 import IconButton from '@mui/material/IconButton';
 import TableContainer from '@mui/material/TableContainer';
@@ -125,6 +127,28 @@ export default function ChargeListView({ sc_type }: { sc_type: string }) {
     getChargeList();
   }, [filters, getChargeList]);
 
+  // Excel export function
+  const handleExport = async () => {
+    try {
+      const res = await getServiceCharges({ sc_type, page: 1, page_size: 100000000 });
+      if (!res.success) throw res.data;
+      const reportData = res.data;
+      const dataForExport = reportData?.map((entry: any) => ({
+        'Start Date': entry?.start_date,
+        'End Date': entry?.end_date,
+        "Host Service Charge (%)": entry?.value,
+      }));
+
+      const worksheet = XLSX.utils.json_to_sheet(dataForExport);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Charging List Report');
+      const today = new Date().toISOString().split('T')[0];
+      XLSX.writeFile(workbook, `charging_list_report_${today}.xlsx`);
+    } catch (err) {
+      console.log(err);
+    }
+  };
+
   return (
     <>
       <Container maxWidth={settings.themeStretch ? false : 'lg'}>
@@ -135,14 +159,19 @@ export default function ChargeListView({ sc_type }: { sc_type: string }) {
             mb: { xs: 3, md: 5 },
           }}
           action={
-            <Button
-              component={RouterLink}
-              onClick={confirm.onTrue}
-              variant="contained"
-              startIcon={<Iconify icon="mingcute:add-line" />}
-            >
-              New Charge
-            </Button>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1 }}>
+              <Button
+                component={RouterLink}
+                onClick={confirm.onTrue}
+                variant="contained"
+                startIcon={<Iconify icon="mingcute:add-line" />}
+              >
+                New Charge
+              </Button>
+              <Button variant="contained" onClick={handleExport}>
+                <Iconify icon="solar:download-bold" sx={{ marginRight: 1 }} /> Download
+              </Button>
+            </Box>
           }
         />
 

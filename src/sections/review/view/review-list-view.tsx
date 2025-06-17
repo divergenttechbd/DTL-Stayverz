@@ -1,42 +1,44 @@
-import isEqual from 'lodash/isEqual'
-import { useCallback, useEffect, useState } from 'react'
-import * as XLSX from "xlsx";
+import isEqual from 'lodash/isEqual';
+import { useCallback, useEffect, useState } from 'react';
+import * as XLSX from 'xlsx';
 // @mui
-import Card from '@mui/material/Card'
-import Container from '@mui/material/Container'
-import IconButton from '@mui/material/IconButton'
-import { alpha } from '@mui/material/styles'
-import Tab from '@mui/material/Tab'
-import Table from '@mui/material/Table'
-import TableBody from '@mui/material/TableBody'
-import TableContainer from '@mui/material/TableContainer'
-import Tabs from '@mui/material/Tabs'
-import Tooltip from '@mui/material/Tooltip'
+import Stack from '@mui/material/Stack';
+import Button from '@mui/material/Button';
+import Card from '@mui/material/Card';
+import Container from '@mui/material/Container';
+import IconButton from '@mui/material/IconButton';
+import { alpha } from '@mui/material/styles';
+import Tab from '@mui/material/Tab';
+import Table from '@mui/material/Table';
+import TableBody from '@mui/material/TableBody';
+import TableContainer from '@mui/material/TableContainer';
+import Tabs from '@mui/material/Tabs';
+import Tooltip from '@mui/material/Tooltip';
 // routes
-import { paths } from 'src/routes/paths'
+import { paths } from 'src/routes/paths';
 // hooks
-import { useBoolean } from 'src/hooks/use-boolean'
+import { useBoolean } from 'src/hooks/use-boolean';
 // components
-import { format } from 'date-fns'
-import CustomBreadcrumbs from 'src/components/custom-breadcrumbs'
-import Iconify from 'src/components/iconify'
-import Label from 'src/components/label'
-import Scrollbar from 'src/components/scrollbar'
-import { useSettingsContext } from 'src/components/settings'
+import { format } from 'date-fns';
+import CustomBreadcrumbs from 'src/components/custom-breadcrumbs';
+import Iconify from 'src/components/iconify';
+import Label from 'src/components/label';
+import Scrollbar from 'src/components/scrollbar';
+import { useSettingsContext } from 'src/components/settings';
 import {
   TableHeadCustom,
   TableNoData,
   TablePaginationCustom,
   TableSelectedAction,
   useTable,
-} from 'src/components/table'
+} from 'src/components/table';
 // types
-import { IReviewTableFilters, IReviewTableFilterValue } from 'src/types/review'
-import { getReviews } from 'src/utils/queries/bookings'
+import { IReviewTableFilters, IReviewTableFilterValue } from 'src/types/review';
+import { getReviews } from 'src/utils/queries/bookings';
 //
-import ReviewTableFiltersResult from '../review-table-filters-result'
-import ReviewTableRow from '../review-table-row'
-import ReviewTableToolbar from '../review-table-toolbar'
+import ReviewTableFiltersResult from '../review-table-filters-result';
+import ReviewTableRow from '../review-table-row';
+import ReviewTableToolbar from '../review-table-toolbar';
 
 // ----------------------------------------------------------------------
 
@@ -142,51 +144,58 @@ export default function ReviewListView({
       page_size: table.rowsPerPage,
       page: table.page + 1,
       status: filters.status === 'all' ? null : filters.status,
-      user: fromUserDetails && userId
+      user: fromUserDetails && userId,
     });
   }, [filters, fromUserDetails, getReviewList, table.page, table.rowsPerPage, userId, userType]);
   // console.log('from user details -', fromUserDetails)
 
   // Excel export function
   const handleExport = async () => {
-
     try {
-      const res = await getReviews({ bookings: true });
+      const res = await getReviews({ stats: true, page: 1, page_size: 100000000, user: false });
       if (!res.success) throw res.data;
+      const reportData = res.data;
+      const dataForExport = reportData?.map((entry: any) => ({
+        'Review By': entry?.review_by?.full_name,
+        'Review By Type': entry?.review_by?.u_type,
+        'Review To': entry?.review_for?.full_name,
+        'Review To Type': entry?.review_for?.u_type,
+        Rating: entry?.rating,
+        'Given at': entry?.created_at,
+        'Review Details': entry?.review,
+      }));
+
+      const worksheet = XLSX.utils.json_to_sheet(dataForExport);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Review List Report');
+      const today = new Date().toISOString().split('T')[0];
+      XLSX.writeFile(workbook, `review_list_report_${today}.xlsx`);
       console.log(res.data);
     } catch (err) {
       console.log(err);
     }
-
-    const dataForExport = tableData?.map((entry: any) => ({
-      "Review By": entry?.review_by?.full_name,
-      "Review By Type": entry?.review_by?.u_type,
-      "Review To": entry?.review_by?.full_name,
-      "Review To Type": entry?.review_by?.u_type,
-      Rating: entry?.rating,
-      "Given at": entry?.created_at,
-      "Review Details": entry?.review,
-    }));
-
-    const worksheet = XLSX.utils.json_to_sheet(dataForExport);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Booking List Report");
-    const today = new Date().toISOString().split("T")[0];
-    XLSX.writeFile(workbook, `booking_list_report_${today}.xlsx`);
-
   };
 
   return (
     <Container maxWidth={settings.themeStretch ? false : 'lg'}>
-
       {!fromUserDetails && (
-        <CustomBreadcrumbs
-          heading="List"
-          links={[{ name: 'Dashboard', href: paths.dashboard.root }, { name: 'Review List' }]}
-          sx={{
-            mb: { xs: 3, md: 5 },
-          }}
-        />
+        <Stack
+          spacing={3}
+          justifyContent="space-between"
+          alignItems={{ xs: 'flex-end', sm: 'center' }}
+          direction={{ xs: 'column', sm: 'row' }}
+        >
+          <CustomBreadcrumbs
+            heading="List"
+            links={[{ name: 'Dashboard', href: paths.dashboard.root }, { name: 'Review List' }]}
+            sx={{
+              mb: { xs: 3, md: 5 },
+            }}
+          />
+          <Button variant="contained" onClick={handleExport}>
+            <Iconify icon="solar:download-bold" sx={{ marginRight: 1 }} /> Download
+          </Button>
+        </Stack>
       )}
 
       <Card>
@@ -220,7 +229,7 @@ export default function ReviewListView({
                   >
                     {tab.value === 'all'
                       ? (tableMeta?.user_status_count?.guest_review_count || 0) +
-                      (tableMeta?.user_status_count?.host_review_count || 0)
+                        (tableMeta?.user_status_count?.host_review_count || 0)
                       : tableMeta?.user_status_count?.[`${tab.value}_review_count`]}
                   </Label>
                 }
@@ -289,8 +298,8 @@ export default function ReviewListView({
                     row={row}
                     selected={table.selected.includes(row.id)}
                     onSelectRow={() => table.onSelectRow(row.id)}
-                    onDeleteRow={() => { }}
-                    onEditRow={() => { }}
+                    onDeleteRow={() => {}}
+                    onEditRow={() => {}}
                   />
                 ))}
 

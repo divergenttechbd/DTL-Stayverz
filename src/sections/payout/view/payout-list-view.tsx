@@ -1,42 +1,45 @@
-import isEqual from 'lodash/isEqual'
-import { useCallback, useEffect, useState } from 'react'
+import isEqual from 'lodash/isEqual';
+import { useCallback, useEffect, useState } from 'react';
+import * as XLSX from 'xlsx';
 // @mui
-import Button from '@mui/material/Button'
-import Card from '@mui/material/Card'
-import Container from '@mui/material/Container'
-import IconButton from '@mui/material/IconButton'
-import { alpha } from '@mui/material/styles'
-import Tab from '@mui/material/Tab'
-import Table from '@mui/material/Table'
-import TableBody from '@mui/material/TableBody'
-import TableContainer from '@mui/material/TableContainer'
-import Tabs from '@mui/material/Tabs'
-import Tooltip from '@mui/material/Tooltip'
+import Button from '@mui/material/Button';
+import Card from '@mui/material/Card';
+import Container from '@mui/material/Container';
+import IconButton from '@mui/material/IconButton';
+import { alpha } from '@mui/material/styles';
+import Tab from '@mui/material/Tab';
+import Table from '@mui/material/Table';
+import TableBody from '@mui/material/TableBody';
+import TableContainer from '@mui/material/TableContainer';
+import Tabs from '@mui/material/Tabs';
+import Stack from '@mui/material/Stack';
+import Tooltip from '@mui/material/Tooltip';
 // routes
-import { paths } from 'src/routes/paths'
+import { paths } from 'src/routes/paths';
 // hooks
-import { useBoolean } from 'src/hooks/use-boolean'
+import { useBoolean } from 'src/hooks/use-boolean';
 // components
-import { format } from 'date-fns'
-import CustomBreadcrumbs from 'src/components/custom-breadcrumbs'
-import { ConfirmDialog } from 'src/components/custom-dialog'
-import Iconify from 'src/components/iconify'
-import Label from 'src/components/label'
-import Scrollbar from 'src/components/scrollbar'
-import { useSettingsContext } from 'src/components/settings'
+import { format } from 'date-fns';
+import CustomBreadcrumbs from 'src/components/custom-breadcrumbs';
+import { ConfirmDialog } from 'src/components/custom-dialog';
+import Iconify from 'src/components/iconify';
+import Label from 'src/components/label';
+import Scrollbar from 'src/components/scrollbar';
+import { useSettingsContext } from 'src/components/settings';
 import {
   TableHeadCustom,
   TableNoData,
   TablePaginationCustom,
   TableSelectedAction,
   useTable,
-} from 'src/components/table'
+} from 'src/components/table';
 // types
-import { IPayoutTableFilters, IPayoutTableFilterValue } from 'src/types/payout'
-import { getPayments } from 'src/utils/queries/invoice'
-import PayoutTableFilterResults from '../payout-table-filters-result'
-import PayoutTableRow from '../payout-table-row'
-import PayoutTableFilters from '../payout-table-toolbar'
+import { IPayoutTableFilters, IPayoutTableFilterValue } from 'src/types/payout';
+import { getPayments } from 'src/utils/queries/invoice';
+import PayoutTableFilterResults from '../payout-table-filters-result';
+import PayoutTableRow from '../payout-table-row';
+import PayoutTableFilters from '../payout-table-toolbar';
+
 
 // ----------------------------------------------------------------------
 
@@ -69,10 +72,7 @@ interface IPayoutListViewProps {
 
 // ----------------------------------------------------------------------
 
-export default function PayoutListView({
-  fromUserDetails = false,
-  userId
-}: IPayoutListViewProps) {
+export default function PayoutListView({ fromUserDetails = false, userId }: IPayoutListViewProps) {
   const table = useTable({
     defaultCurrentPage: 0,
     defaultRowsPerPage: 10,
@@ -131,23 +131,61 @@ export default function PayoutListView({
       payment_date_before: filters.payment_date_before
         ? format(filters.payment_date_before, 'yyyy-MM-dd')
         : null,
-      host: fromUserDetails ? userId:filters.host?.value,
+      host: fromUserDetails ? userId : filters.host?.value,
       page_size: table.rowsPerPage,
       page: table.page + 1,
       status: filters.status === 'all' ? null : filters.status,
     });
   }, [filters, fromUserDetails, getPaymentList, table.page, table.rowsPerPage, userId]);
 
+  // Excel export function
+  const handleExport = async () => {
+    try {
+      const res = await getPayments({ page: 1, page_size: 100000000 });
+      if (!res.success) throw res.data;
+      const reportData = res.data;
+      const dataForExport = reportData?.map((entry: any) => ({
+        'Invoice Number': entry?.invoice_no,
+        'Payment Date': entry?.payment_date,
+        'Payment To': entry?.host?.full_name,
+        'Payment Method': entry?.pay_method?.m_type,
+        'Account No.': entry?.pay_method?.account_no,
+        'Total Amount': entry?.total_amount,
+        Status: entry?.status,
+      }));
+
+      const worksheet = XLSX.utils.json_to_sheet(dataForExport);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Payout List Report');
+      const today = new Date().toISOString().split('T')[0];
+      XLSX.writeFile(workbook, `payout_list_report_${today}.xlsx`);
+    } catch (err) {
+      console.log(err);
+    }
+  };
+
   return (
     <>
       <Container maxWidth={settings.themeStretch ? false : 'lg'}>
-        {!fromUserDetails && (<CustomBreadcrumbs
-          heading="List"
-          links={[{ name: 'Dashboard', href: paths.dashboard.root }, { name: 'Payout List' }]}
-          sx={{
-            mb: { xs: 3, md: 5 },
-          }}
-        />)}
+        {!fromUserDetails && (
+          <Stack
+            spacing={3}
+            justifyContent="space-between"
+            alignItems={{ xs: 'flex-end', sm: 'center' }}
+            direction={{ xs: 'column', sm: 'row' }}
+          >
+            <CustomBreadcrumbs
+              heading="List"
+              links={[{ name: 'Dashboard', href: paths.dashboard.root }, { name: 'Payout List' }]}
+              sx={{
+                mb: { xs: 3, md: 5 },
+              }}
+            />
+            <Button variant="contained" onClick={handleExport}>
+              <Iconify icon="solar:download-bold" sx={{ marginRight: 1 }} /> Download
+            </Button>
+          </Stack>
+        )}
 
         <Card>
           <Tabs
@@ -188,9 +226,9 @@ export default function PayoutListView({
             ))}
           </Tabs>
 
-          <PayoutTableFilters 
-            filters={filters} 
-            onFilters={handleFilters} 
+          <PayoutTableFilters
+            filters={filters}
+            onFilters={handleFilters}
             showHostFilter={!fromUserDetails}
           />
 

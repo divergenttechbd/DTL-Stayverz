@@ -1,11 +1,13 @@
 import isEqual from 'lodash/isEqual';
 import { useState, useCallback, useEffect } from 'react';
+import * as XLSX from 'xlsx';
 import { alpha } from '@mui/material/styles';
 import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
 import Card from '@mui/material/Card';
 import Table from '@mui/material/Table';
 import Button from '@mui/material/Button';
+import Box from '@mui/material/Box';
 import Tooltip from '@mui/material/Tooltip';
 import Container from '@mui/material/Container';
 import TableBody from '@mui/material/TableBody';
@@ -124,6 +126,31 @@ export default function UserListView() {
     });
   }, [filters, getUserList, table.page, table.rowsPerPage]);
 
+  // Excel export function
+  const handleExport = async () => {
+    try {
+      const res = await getStaffUsers({ page: 1, page_size: 100000000 });
+      if (!res.success) throw res.data;
+      const reportData = res.data;
+      const dataForExport = reportData?.map((entry: any) => ({
+        Name: entry?.full_name,
+        Email: entry?.email,
+        'Host Name': entry?.host?.full_name,
+        'Phone Number': entry?.phone_number,
+        Role: entry?.status,
+        Status: entry?.role,
+      }));
+
+      const worksheet = XLSX.utils.json_to_sheet(dataForExport);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'User List Report');
+      const today = new Date().toISOString().split('T')[0];
+      XLSX.writeFile(workbook, `user_list_report_${today}.xlsx`);
+    } catch (err) {
+      console.log(err);
+    }
+  };
+
   return (
     <>
       <Container maxWidth={settings.themeStretch ? false : 'lg'}>
@@ -134,17 +161,21 @@ export default function UserListView() {
             mb: { xs: 3, md: 5 },
           }}
           action={
-            <Button
-              component={RouterLink}
-              href={paths.dashboard.settings.user.new}
-              variant="contained"
-              startIcon={<Iconify icon="mingcute:add-line" />}
-            >
-              New User
-            </Button>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1 }}>
+              <Button
+                component={RouterLink}
+                href={paths.dashboard.settings.user.new}
+                variant="contained"
+                startIcon={<Iconify icon="mingcute:add-line" />}
+              >
+                New User
+              </Button>
+              <Button variant="contained" onClick={handleExport}>
+                <Iconify icon="solar:download-bold" sx={{ marginRight: 1 }} /> Download
+              </Button>
+            </Box>
           }
         />
-
         <Card>
           <Tabs
             value={filters.status}
