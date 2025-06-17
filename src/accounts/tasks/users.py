@@ -1,4 +1,5 @@
 import uuid
+from datetime import date
 
 import requests
 from celery import shared_task
@@ -12,7 +13,8 @@ from requests import RequestException
 from accounts.models import User, SuperhostStatusHistory
 from base.type_choices import UserTypeOption
 
-from accounts.services import get_superhost_progress, get_previous_completed_quarter_start_end_dates
+from accounts.services import get_superhost_progress, get_previous_completed_quarter_start_end_dates, \
+    calculate_host_review_score, calculate_hosted_days, calculate_cancellation_rate, get_superhost_progress_for_period
 from celery.utils.log import get_task_logger
 logger = get_task_logger(__name__)
 
@@ -48,6 +50,7 @@ def send_sms(username: str, message: str) -> None:
     except RequestException as e:
         # Handle any request-related exception (e.g., ConnectionError, Timeout, etc.)
         print(f"Error sending SMS: {e}")
+
 
 
 @shared_task(name="assess_and_log_quarterly_superhost_status")

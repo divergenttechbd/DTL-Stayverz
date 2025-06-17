@@ -519,7 +519,7 @@ class SuperhostProgressAPIView(APIView):
 
     permission_classes = [IsAuthenticated]  # Adjust permissions as needed
 
-    swagger_tags = ["Superhost", "Host Features"]
+    swagger_tags = ["Superhost"]
 
     @swagger_auto_schema(
         operation_summary="Get Host's Superhost Program Progress and Official History",
@@ -527,11 +527,10 @@ class SuperhostProgressAPIView(APIView):
     )
     def get(self, request, host_id=None, *args, **kwargs):  # host_id from URL
         target_host = None
-        if host_id:  # If an admin is checking for a specific host
-            # Add permission check here if only admins can specify host_id
-            if not request.user.is_staff:  # Example check
-                return Response({"message": "You do not have permission to view other hosts' progress."},
-                                status=status.HTTP_403_FORBIDDEN)
+        if host_id:
+            # if not request.user.is_staff:
+            #     return Response({"message": "You do not have permission to view other hosts' progress."},
+            #                     status=status.HTTP_403_FORBIDDEN)
             target_host = get_object_or_404(User, id=host_id, u_type=UserTypeOption.HOST)
         elif hasattr(request.user, 'u_type') and request.user.u_type == UserTypeOption.HOST:  # Host checking their own
             target_host = request.user
@@ -542,11 +541,10 @@ class SuperhostProgressAPIView(APIView):
         if not target_host:  # Should be caught by get_object_or_404 or the logic above
             return Response({"message": "Host not found."}, status=status.HTTP_404_NOT_FOUND)
 
-        # 1. Get current ONGOING progress (uses get_current_quarter_start_and_end_dates internally)
-        # get_superhost_progress now returns a dictionary that matches SuperhostOverallProgressSerializer
+
         ongoing_progress_data_dict = get_superhost_progress(target_host)
 
-        # 2. Get official Superhost status history
+
         history_queryset = SuperhostStatusHistory.objects.filter(host=target_host).order_by('-assessment_period_end',
                                                                                             '-status_achieved_on')[
                            :10]  # Limit for display
@@ -628,8 +626,11 @@ class ListHostsInRadiusAPIView(ListAPIView):
         # We prefetch UserProfile to access latitude and longitude
         all_active_hosts = User.objects.filter(
             u_type=UserTypeOption.HOST,
-            is_active=True
+            is_active=True,
+            is_available_for_cohosting = True
         ).select_related('userprofile')  # Use select_related for OneToOne
+
+        print(all_active_hosts, " --- hosts ---")
 
         hosts_in_radius_with_distance = []
         for host in all_active_hosts:
@@ -682,7 +683,8 @@ class ListHostsInRadiusAPIView(ListAPIView):
 
         return User.objects.filter(
             u_type=UserTypeOption.HOST,
-            is_active=True
+            is_active=True,
+            is_available_for_cohosting=True
         ).annotate(
             annotated_total_active_listings=Count(
                 'listing',

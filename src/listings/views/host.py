@@ -36,6 +36,7 @@ from listings.serializers import (
     ListingSerializer,
     ListingAmenitySerializer, AssignCoHostSerializer, ListingCoHostSerializer, GrantedListingWithDetailsSerializer,
     BasicListingInfoWithPriceSerializer, ListingCoHostDetailForPrimaryHostSerializer, CoHostedListingDetailSerializer,
+    UpdateCoHostAssignmentSerializer, PrimaryHostAssignmentViewSerializer,
 )
 from listings.views.service import ListingCalendarDataProcess, ListingCreateDataProcess
 
@@ -407,6 +408,53 @@ class ManageListingCoHostsAPIView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     @swagger_auto_schema(
+        request_body=UpdateCoHostAssignmentSerializer,
+        operation_summary="Update a Co-Host Assignment (e.g., commission, access)",
+        operation_description="Updates specific details of a co-host assignment, such as the commission percentage or access level. This requires the unique ID of the assignment.",
+        responses={
+            200: ListingCoHostSerializer,
+            400: "Invalid input or validation error.",
+            403: "Permission denied (e.g., not the listing owner).",
+            404: "Assignment not found."
+        }
+    )
+    def patch(self, request, assignment_id, *args, **kwargs):
+        """
+        Updates an existing co-host assignment. The primary host can change
+        the commission percentage, access level, or active status.
+        """
+        primary_host = request.user
+
+        # 1. Find the specific co-host assignment
+        assignment = get_object_or_404(ListingCoHost, pk=assignment_id)
+
+        # 2. Verify permission: The user making the request must be the primary host
+        if assignment.primary_host != primary_host:
+            return Response(
+                {"message": "You do not have permission to modify this co-host assignment."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # 3. Use the new serializer for validation and update
+        #    'partial=True' is key for PATCH, allowing partial updates.
+        serializer = UpdateCoHostAssignmentSerializer(
+            instance=assignment,
+            data=request.data,
+            partial=True
+        )
+
+        if serializer.is_valid():
+            updated_assignment = serializer.save()
+            # Return the full, updated object using the main serializer
+            response_serializer = ListingCoHostSerializer(updated_assignment)
+            return Response(
+                {"message": "Co-host assignment updated successfully.", "data": response_serializer.data},
+                status=status.HTTP_200_OK
+            )
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @swagger_auto_schema(
         operation_summary="Remove a co-host from a specific listing",
         manual_parameters=[
             openapi.Parameter('listing_id', openapi.IN_QUERY, description="ID of the listing",
@@ -618,7 +666,7 @@ class PrimaryHostViewCoHostAssignmentsStatusAPIView(APIView):
             )
         )
 
-        granted_listings_serialized_data = []
+        granted_assignments_serialized_data = []
         not_granted_listings_serialized_data = []
 
         for listing_instance in primary_host_listings_qs:
@@ -627,7 +675,7 @@ class PrimaryHostViewCoHostAssignmentsStatusAPIView(APIView):
             if assignment_list:
                 assignment = assignment_list[0]
                 setattr(listing_instance, 'cohost_assignment_details', assignment)
-                granted_listings_serialized_data.append(GrantedListingWithDetailsSerializer(listing_instance).data)
+                granted_assignments_serialized_data.append(PrimaryHostAssignmentViewSerializer(assignment).data)
             else:
                 not_granted_listings_serialized_data.append(BasicListingInfoWithPriceSerializer(listing_instance).data)
 
@@ -642,17 +690,18 @@ class PrimaryHostViewCoHostAssignmentsStatusAPIView(APIView):
         data_payload = {
             "co_host_id": co_host_user_instance.id,
             "name": co_host_user_instance.get_full_name(),
+            "image":co_host_user_instance.image,
             "bio": co_host_bio,
             "total_active_listings": co_host_total_active_listings, # New
             "avg_rating": float(co_host_user_instance.avg_rating),       # New (ensure it's a float)
             "years_hosting": co_host_years_hosting,                 # New
-            "granted_listings": granted_listings_serialized_data,
+            "granted_listings": granted_assignments_serialized_data,
             "not_granted_listings": not_granted_listings_serialized_data
         }
 
         meta_data = {
             "total_primary_host_listings_considered": primary_host_listings_qs.count(),
-            "granted_count": len(granted_listings_serialized_data),
+            "granted_count": len(granted_assignments_serialized_data),
             "not_granted_count": len(not_granted_listings_serialized_data)
         }
 

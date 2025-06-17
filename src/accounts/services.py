@@ -87,6 +87,7 @@ def calculate_hosted_days(host: User, period_start_date: date, period_end_date: 
         check_out__gte=period_start_date,
         check_out__lte=period_end_date
     )
+    print(relevant_bookings)
     total_hosted_nights = relevant_bookings.aggregate(total_nights=Sum('night_count'))['total_nights']
     return total_hosted_nights or 0
 
@@ -120,6 +121,66 @@ def calculate_cancellation_rate(host: User, period_start_date: date, period_end_
     return cancellation_rate.quantize(Decimal('0.01'))
 
 
+
+def get_superhost_progress_for_period(host: User, period_start: date, period_end: date):
+    """
+    Calculates all metrics for a host for a SPECIFIC period
+    and determines their progress towards Superhost tiers.
+    This is the generic function used by both the API and the quarterly task.
+    """
+    current_metrics = {
+        'review_score': calculate_host_review_score(host, period_start, period_end),
+        'hosted_days': calculate_hosted_days(host, period_start, period_end),
+        'cancellation_rate': calculate_cancellation_rate(host, period_start, period_end),
+    }
+
+    tiers_progress = []
+    achieved_tier_key = None
+
+    for tier_key, tier_criteria in sorted(settings.SUPERHOST_TIERS.items(), key=lambda item: item[1]['order']):
+        is_met_review_score = current_metrics['review_score'] >= tier_criteria['review_score_min']
+        is_met_hosted_days = current_metrics['hosted_days'] >= tier_criteria['hosted_days_min']
+        is_met_cancellation_rate = current_metrics['cancellation_rate'] <= tier_criteria['cancellation_rate_max_percent']
+
+        all_criteria_met_for_this_tier = is_met_review_score and is_met_hosted_days and is_met_cancellation_rate
+
+        tiers_progress.append({
+            'tier_key': tier_key,
+            'name': tier_criteria['name'],
+            'criteria': tier_criteria,
+            'achieved': all_criteria_met_for_this_tier,
+            'progress_details': {
+                'review_score': {
+                    'current': current_metrics['review_score'],
+                    'required': tier_criteria['review_score_min'],
+                    'met': is_met_review_score
+                },
+                'hosted_days': {
+                    'current': current_metrics['hosted_days'],
+                    'required': tier_criteria['hosted_days_min'],
+                    'met': is_met_hosted_days
+                },
+                'cancellation_rate': {
+                    'current': current_metrics['cancellation_rate'],
+                    'required': tier_criteria['cancellation_rate_max_percent'],
+                    'met': is_met_cancellation_rate,
+                    'comparison': 'lower_is_better'
+                },
+            }
+        })
+
+        if all_criteria_met_for_this_tier:
+            achieved_tier_key = tier_key
+
+    # Note the change here: 'achieved_tier' is now 'achieved_tier_key' for clarity
+    return {
+        'metrics': current_metrics,
+        'tiers_progress': tiers_progress,
+        'achieved_tier_key': achieved_tier_key, # The key of the highest tier achieved
+        'evaluation_period_start': period_start,
+        'evaluation_period_end': period_end,
+    }
+
 def get_superhost_progress(host: User):
     """
     Calculates all metrics for a host for the current quarter (up to today)
@@ -127,6 +188,8 @@ def get_superhost_progress(host: User):
     """
     # Use current quarter (start of quarter to today) for progress tracking
     period_start, period_end = get_current_quarter_start_and_end_dates()
+
+    print(period_start, " --- ", period_end)
 
     current_metrics = {
         'review_score': calculate_host_review_score(host, period_start, period_end),

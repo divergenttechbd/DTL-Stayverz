@@ -43,6 +43,7 @@ class AdminListingListAPIView(ListAPIView):
         if filterset.is_valid():
             filtered_qs = filterset.qs
         else:
+            print(" -- wrong --")
             filtered_qs = base_queryset
 
         # Apply custom sort_by from query param

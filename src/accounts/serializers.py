@@ -126,7 +126,7 @@ class StatusUpdateSerializer(Serializer):
     phone_number = CharField(required=False)
     email = CharField(required=False)
     user_status = ChoiceField(choices=["active", "restricted"], required=False)
-    identity_status = ChoiceField(choices=["rejected", "verified"], required=False)
+    identity_status = ChoiceField(choices=["rejected", "verified", "not_verified", "pending"], required=False)
     reject_reason = CharField(required=False, allow_blank=True)
 
     def validate(self, data):
@@ -237,7 +237,7 @@ class SuperhostStatusHistorySerializer(serializers.ModelSerializer):
         fields = [
             'id',
             'tier_key',
-            'tier_name', # Comes directly from the model
+            'tier_name',
             'assessment_period_start',
             'assessment_period_end',
             'status_achieved_on',

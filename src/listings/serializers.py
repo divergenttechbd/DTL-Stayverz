@@ -315,10 +315,55 @@ class ListingCoHostSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
+class UpdateCoHostAssignmentSerializer(serializers.ModelSerializer):
+    """
+    Serializer for partially updating a ListingCoHost assignment.
+    Allows changing the access_level, commission_percentage, and is_active status.
+    """
+    # Make fields not required for PATCH requests
+    access_level = serializers.ChoiceField(choices=CoHostAccessLevel.choices, required=False)
+    commission_percentage = serializers.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        min_value=Decimal('0.00'),
+        max_value=Decimal('100.00'),
+        required=False
+    )
+    is_active = serializers.BooleanField(required=False)
+
+    class Meta:
+        model = ListingCoHost
+        fields = [
+            'access_level',
+            'commission_percentage',
+            'is_active'
+        ]
+
 class BasicListingInfoWithPriceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Listing
         fields = ['id', 'title', 'cover_photo', 'price', 'address']
+
+class PrimaryHostAssignmentViewSerializer(serializers.ModelSerializer):
+    """
+    Represents a co-host assignment, including its ID and commission,
+    and nests the essential details of the associated listing.
+    """
+    # Use your existing listing serializer to show listing info.
+    # If you don't have one, the definition is provided below.
+    listing_details = BasicListingInfoWithPriceSerializer(source='listing', read_only=True)
+
+    class Meta:
+        model = ListingCoHost
+        fields = [
+            'id',
+            'access_level',
+            'commission_percentage',
+            'is_active',
+            'listing_details',
+        ]
+
+
 
 class GrantedListingWithDetailsSerializer(BasicListingInfoWithPriceSerializer): # Inherits id, title, cover_photo, price
     # Get from the attached ListingCoHost assignment object

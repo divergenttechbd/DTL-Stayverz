@@ -2,6 +2,9 @@ from django.db.models import Q
 from django_filters import rest_framework as filters
 from listings.models import Listing
 
+from django.contrib.gis.geos import Point
+from django.contrib.gis.measure import D # D is a distance object
+from rest_framework.exceptions import ValidationError
 
 class NumberInFilter(filters.BaseInFilter, filters.NumberFilter):
     pass
@@ -88,9 +91,14 @@ class ListingFilter(filters.FilterSet):
         label="Deleted Status"
     )
 
+    location = filters.CharFilter(
+        method='filter_by_distance',
+        label="Filter by distance. Use with 'lat', 'lng', and 'radius_km' query params."
+    )
+
     class Meta:
         model = Listing
-        fields = ("category", "status", "verification_status", "created_at", "host", "deleted_status", "district__in")
+        fields = ("category", "status", "verification_status", "created_at", "host", "deleted_status", "district__in", "location")
 
     def __init__(self, data=None, *args, **kwargs):
         # If 'deleted_status' is not provided, set it to 'active' by default
@@ -107,3 +115,28 @@ class ListingFilter(filters.FilterSet):
         elif value == 'all':
             return queryset
         return queryset.filter(is_deleted=False)
+
+    def filter_by_distance(self, queryset, name, value):
+        request = self.request
+        lat = request.query_params.get('lat')
+        lng = request.query_params.get('lng')
+        radius_km = request.query_params.get('radius_km')
+
+        print("Filter 'filter_by_distance' is running.")
+        if not all([lat, lng, radius_km]):
+            print("Missing one or more location parameters (lat, lng, radius_km).")
+            return queryset
+
+        try:
+            center_point = Point(float(lng), float(lat), srid=4326)
+
+
+            radius_meters = float(radius_km) * 1000
+
+            print(f"Filtering within {radius_meters} meters of point ({lng}, {lat}).")
+
+            # Use the numeric meter value directly instead of the D() object
+            return queryset.filter(location__dwithin=(center_point, radius_meters))
+
+        except (ValueError, TypeError):
+            raise ValidationError(detail={'error': "Invalid numeric values for 'lat', 'lng', or 'radius_km'."})

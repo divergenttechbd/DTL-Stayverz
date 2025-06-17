@@ -78,7 +78,7 @@ class Listing(BaseModel):
     unique_id = models.UUIDField(unique=True)
     host = models.ForeignKey(User, on_delete=models.PROTECT)
     category = models.ForeignKey(
-        "listings.Category", on_delete=models.PROTECT, null=True
+        "listings.Category", on_delete=models.PROTECT, null=True, blank=True
     )
     title = models.CharField(max_length=200)
     description = models.TextField(blank=True)
@@ -229,19 +229,22 @@ class ListingCoHost(BaseModel): # Inherits created_at, updated_at
     listing = models.ForeignKey(
         'listings.Listing', # Use string reference if Listing is in the same app or to avoid circular import
         on_delete=models.CASCADE,
-        related_name='cohost_assignments'
+        related_name='cohost_assignments',
+        null=True,
+        blank=True,
     )
     co_host_user = models.ForeignKey( # The user who is the co-host
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name='cohosting_gigs',
         limit_choices_to={'u_type': UserTypeOption.HOST} # Co-hosts are also hosts
+        ,null=True,blank=True
     )
     primary_host = models.ForeignKey( # The original owner of the listing
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name='assigned_cohosts_to_listings'
-
+        , null=True, blank=True
     )
     access_level = models.CharField(
         max_length=10,
@@ -254,6 +257,7 @@ class ListingCoHost(BaseModel): # Inherits created_at, updated_at
         validators=[MinValueValidator(Decimal('0.00')), MaxValueValidator(Decimal('100.00'))],
         default=Decimal('0.00'),
         help_text="Percentage of booking revenue (e.g., host payout) co-host receives for this listing."
+        , null=True, blank=True
     )
     is_active = models.BooleanField(default=True, help_text="Is this co-hosting assignment currently active?")
 

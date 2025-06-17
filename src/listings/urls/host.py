@@ -38,5 +38,6 @@ urlpatterns = [
 path('primary-host/cohost-assignment-status/', PrimaryHostViewCoHostAssignmentsStatusAPIView.as_view(), name='primary_host_cohost_assignment_status'),
 path('listing/active-cohosts/', ListCoHostsForListingAPIView.as_view(), name='listing_active_cohosts'),
 path('my-assignments/cohosting-listings/', MyCoHostedListingsAPIView.as_view(), name='my_cohosted_listings'),
+path('co-hosts/manage-assignments/<int:assignment_id>/', ManageListingCoHostsAPIView.as_view(), name='cohost-manage-single')
 ]
 
