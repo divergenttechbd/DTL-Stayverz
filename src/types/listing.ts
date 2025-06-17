@@ -87,4 +87,5 @@ export type IListingItem = {
   media_allowed: boolean;
   event_allowed: boolean;
   unmarried_couples_allowed: boolean;
+  host: number
 };

@@ -24,6 +24,7 @@ import BlogCreatePage from 'src/pages/post/new';
 import BlogEditPage from 'src/pages/post/edit';
 import BlogDetailsPage from 'src/pages/post/details';
 import NotificationPage from 'src/pages/dashboard/notification/list';
+import { CouponListView } from 'src/sections/coupon/view';
 
 // ----------------------------------------------------------------------
 
@@ -121,6 +122,13 @@ export const dashboardRoutes = [
           { path: 'new', element: <BlogCreatePage /> },
           { path: ':id/edit', element: <BlogEditPage /> },
           { path: ':id/details', element: <BlogDetailsPage /> },
+        ],
+      },
+      {
+        path: 'coupon',
+        children: [
+          { path: 'list', element: <CouponListView /> },
+          { path: ':id/edit', element: <UserEditPage /> },
         ],
       },
       {

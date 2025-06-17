@@ -12,6 +12,7 @@ import Switch from '@mui/material/Switch'
 // utils
 import { IListingItem } from 'src/types/listing'
 // components
+import { useRouter } from 'src/routes/hook'
 import startCase from 'lodash/startCase'
 import { varTranHover } from 'src/components/animate'
 import Iconify from 'src/components/iconify'
@@ -25,9 +26,10 @@ import { updateInstantBookingListing } from 'src/utils/queries/listing'
 
 type Props = {
   listing: IListingItem;
+  getListingDetails: VoidFunction;
 };
 
-export default function TourDetailsContent({ listing }: Props) {
+export default function TourDetailsContent({ listing, getListingDetails }: Props) {
   const {
     title,
     images,
@@ -54,6 +56,8 @@ export default function TourDetailsContent({ listing }: Props) {
     unmarried_couples_allowed,
     instant_booking_allowed,
   } = listing;
+
+  const router = useRouter();
 
   const slides = images.map((slide) => ({
     src: slide,
@@ -330,14 +334,16 @@ export default function TourDetailsContent({ listing }: Props) {
       const res = await updateInstantBookingListing({
         id: listing?.id,
         instant_booking_allowed: instant_booking_allowed === false ? 'true' : 'false',
+        unique_id: listing.unique_id,
+        title: listing.title,
+        host: listing.host,
       });
       if (!res.success) throw res.data;
-      // getUserDetails?.();
-      // setVerificationAction('');
+      getListingDetails?.();
     } catch (err) {
       console.log(err);
     }
-  }, [listing?.id, instant_booking_allowed]);
+  }, [listing?.id, instant_booking_allowed, listing?.unique_id, listing?.title, listing?.host, getListingDetails]);
 
   return (
     <>
@@ -346,9 +352,9 @@ export default function TourDetailsContent({ listing }: Props) {
       <Stack sx={{ maxWidth: 720, mx: 'auto' }}>
         {renderHead}
 
-        <Divider sx={{ borderStyle: 'dashed', my: 5 }} />
+        <Divider sx={{ borderStyle: 'dashed', mt: 5, mb: 2 }} />
 
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', my: 5 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 5 }}>
           <Tooltip title="Toggle Instant Booking" placement="top" arrow>
             <Stack
               sx={{

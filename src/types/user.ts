@@ -124,6 +124,7 @@ export type IUserItem = {
   identity_verification_images: {
     front_image: string;
     back_image: string;
+    live: string;
   };
   profile: {
     id: string;

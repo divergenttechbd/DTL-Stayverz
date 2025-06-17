@@ -31,11 +31,12 @@ import {
   TableSelectedAction,
   TablePaginationCustom,
 } from 'src/components/table';
-import { downloadUserCSV, getUsers } from 'src/utils/queries/users';
+import { downloadUserCSV, getUsers, updateUser } from 'src/utils/queries/users';
 // types
 import { IUserTableFilters, IUserTableFilterValue } from 'src/types/user';
 // import { downloadCSV } from 'src/utils/queries/bookings';
 import { Stack } from '@mui/material';
+
 //
 import UserTableRow from '../user-table-row';
 import UserTableToolbar from '../user-table-toolbar';
@@ -148,26 +149,6 @@ export default function UserListView() {
     }
   }, []);
 
-  const handleVerify = async (id: string, status: string) => {
-    // console.log(id, status);
-    if (status === "verified") {
-      try {
-        // const res = await verifyUser(id);
-        console.log(id, status);
-      } catch (err) {
-        console.log(err);
-      }
-    }
-    else if (status === "not_verified") {
-      try {
-        // const res = await unverifyUser(id);
-        console.log(id, status);
-      } catch (err) {
-        console.log(err);
-      }
-    }
-  }
-
   useEffect(() => {
     getUserList({
       ...filters,
@@ -187,6 +168,67 @@ export default function UserListView() {
       status: filters.status === 'all' ? null : filters.status,
     });
   }, [filters, getUserList, table.page, table.rowsPerPage]);
+
+  const handleVerify = async (userId: string, status: string) => {
+    if (status === "verified") {
+      try {
+        console.log(userId, status);
+        const res = await updateUser({
+          id: userId,
+          identity_status: "pending",
+        });
+        if (!res.success) throw res.data;
+        getUserList({
+          ...filters,
+          stats: true,
+          date_joined_after: filters.date_joined_after
+            ? format(filters.date_joined_after, 'yyyy-MM-dd')
+            : null,
+          date_joined_before: filters.date_joined_before
+            ? format(filters.date_joined_before, 'yyyy-MM-dd')
+            : null,
+          identity_verification_status: filters.identity_verification_status?.replace(
+            'unverified',
+            'not_verified'
+          ),
+          page_size: table.rowsPerPage,
+          page: table.page + 1,
+          status: filters.status === 'all' ? null : filters.status,
+        })
+      } catch (err) {
+        console.log(err);
+      }
+    }
+    else if (status === "not_verified" || status === "pending") {
+      try {
+        console.log(userId, status);
+        const res = await updateUser({
+          id: userId,
+          identity_status: "verified",
+        });
+        if (!res.success) throw res.data;
+        getUserList({
+          ...filters,
+          stats: true,
+          date_joined_after: filters.date_joined_after
+            ? format(filters.date_joined_after, 'yyyy-MM-dd')
+            : null,
+          date_joined_before: filters.date_joined_before
+            ? format(filters.date_joined_before, 'yyyy-MM-dd')
+            : null,
+          identity_verification_status: filters.identity_verification_status?.replace(
+            'unverified',
+            'not_verified'
+          ),
+          page_size: table.rowsPerPage,
+          page: table.page + 1,
+          status: filters.status === 'all' ? null : filters.status,
+        })
+      } catch (err) {
+        console.log(err);
+      }
+    }
+  }
 
   return (
     <>

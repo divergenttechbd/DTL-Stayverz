@@ -6,6 +6,7 @@ import Checkbox from '@mui/material/Checkbox';
 import TableCell from '@mui/material/TableCell';
 import ListItemText from '@mui/material/ListItemText';
 import Box from '@mui/material/Box'
+import Divider from '@mui/material/Divider'
 // hooks
 import { useRouter } from 'src/routes/hook';
 import { format } from 'date-fns';
@@ -15,6 +16,7 @@ import { paths } from 'src/routes/paths';
 import { getDecimalValue } from 'src/utils/format-number';
 //
 import Iconify from 'src/components/iconify';
+import React from 'react';
 
 type Props = {
   selected: boolean;
@@ -66,6 +68,12 @@ export default function BookingTableRow({
 
   const router = useRouter();
 
+  const today = new Date().toISOString().split('T')[0];
+
+  const isDuringStay = today >= check_in && today <= check_out;
+
+  console.log("is during stay", isDuringStay)
+
   return (
     <TableRow hover selected={selected}>
       <TableCell padding="checkbox">
@@ -114,20 +122,46 @@ export default function BookingTableRow({
       </TableCell>
       <TableCell sx={{ whiteSpace: 'nowrap' }}>৳ {getDecimalValue(paid_amount)}</TableCell>
       <TableCell sx={{ whiteSpace: 'nowrap' }}>
-        {reviews.map((r) => (
-          <div key={r.id} className="p-4 border rounded shadow-sm">
-            <div><strong>Type:</strong> {r.is_guest_review ? "Guest Review" : "Host Review"}</div>
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <div>
-                <strong>Rating:</strong> {r.rating}
+        {reviews.length > 0 ? (
+          <Box>
+            {reviews.map((r) => (
+              <div key={r.id}>
+                {r.is_guest_review ?
+                  <Box>
+                    <div><strong>Type:</strong> {r.is_guest_review === true && "Guest Review"}</div>
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <div>
+                        <strong>Rating:</strong> {r.rating}
+                      </div>
+                      <Iconify icon="eva:star-fill" sx={{ color: 'warning.main' }} />
+                    </Box>
+                  </Box>
+                  : <strong>No Guest Review</strong>
+                }
               </div>
-              <Iconify icon="eva:star-fill" sx={{ color: 'warning.main' }} />
-            </Box>
-            <div><strong>Review:</strong> {r.review}</div>
-          </div>
-        ))}
+            ))}
+            <Divider sx={{ borderStyle: 'dashed', my: 1 }} />
+            {reviews.map((r) => (
+              <div key={r.id}>
+                {r.is_host_review ?
+                  <Box>
+                    <div><strong>Type:</strong> {r.is_host_review === true && "Host Review"}</div>
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <div>
+                        <strong>Rating:</strong> {r.rating}
+                      </div>
+                      <Iconify icon="eva:star-fill" sx={{ color: 'warning.main' }} />
+                    </Box>
+                  </Box>
+                  : <strong>No Host Review</strong>
+                }
+              </div>
+            ))}
+          </Box>
+        ) : <strong>No Review</strong>}
+
       </TableCell>
-      <TableCell align="right" sx={{ px: 1, whiteSpace: 'nowrap' }}>
+      <TableCell sx={{ px: 1, whiteSpace: 'nowrap', display: 'flex', justifyContent: 'flex-center' }}>
         <Tooltip title="Quick Edit" placement="top" arrow>
           <Button
             color="primary"
@@ -138,14 +172,16 @@ export default function BookingTableRow({
             Details
           </Button>
         </Tooltip>
-        <Tooltip title="Cancel Booking" placement="top" arrow>
-          <Button
-            color="error"
-            onClick={onCancel}
-          >
-            Cancel
-          </Button>
-        </Tooltip>
+        {row.status === 'confirmed' && !isDuringStay && (
+          <Tooltip title="Cancel Booking" placement="top" arrow>
+            <Button
+              color="error"
+              onClick={onCancel}
+            >
+              Cancel
+            </Button>
+          </Tooltip>
+        )}
       </TableCell>
     </TableRow>
   );

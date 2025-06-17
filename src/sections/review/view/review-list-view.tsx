@@ -1,5 +1,6 @@
 import isEqual from 'lodash/isEqual'
 import { useCallback, useEffect, useState } from 'react'
+import * as XLSX from "xlsx";
 // @mui
 import Card from '@mui/material/Card'
 import Container from '@mui/material/Container'
@@ -145,6 +146,36 @@ export default function ReviewListView({
     });
   }, [filters, fromUserDetails, getReviewList, table.page, table.rowsPerPage, userId, userType]);
   // console.log('from user details -', fromUserDetails)
+
+  // Excel export function
+  const handleExport = async () => {
+
+    try {
+      const res = await getReviews({ bookings: true });
+      if (!res.success) throw res.data;
+      console.log(res.data);
+    } catch (err) {
+      console.log(err);
+    }
+
+    const dataForExport = tableData?.map((entry: any) => ({
+      "Review By": entry?.review_by?.full_name,
+      "Review By Type": entry?.review_by?.u_type,
+      "Review To": entry?.review_by?.full_name,
+      "Review To Type": entry?.review_by?.u_type,
+      Rating: entry?.rating,
+      "Given at": entry?.created_at,
+      "Review Details": entry?.review,
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(dataForExport);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Booking List Report");
+    const today = new Date().toISOString().split("T")[0];
+    XLSX.writeFile(workbook, `booking_list_report_${today}.xlsx`);
+
+  };
+
   return (
     <Container maxWidth={settings.themeStretch ? false : 'lg'}>
 
@@ -189,7 +220,7 @@ export default function ReviewListView({
                   >
                     {tab.value === 'all'
                       ? (tableMeta?.user_status_count?.guest_review_count || 0) +
-                        (tableMeta?.user_status_count?.host_review_count || 0)
+                      (tableMeta?.user_status_count?.host_review_count || 0)
                       : tableMeta?.user_status_count?.[`${tab.value}_review_count`]}
                   </Label>
                 }
@@ -258,8 +289,8 @@ export default function ReviewListView({
                     row={row}
                     selected={table.selected.includes(row.id)}
                     onSelectRow={() => table.onSelectRow(row.id)}
-                    onDeleteRow={() => {}}
-                    onEditRow={() => {}}
+                    onDeleteRow={() => { }}
+                    onEditRow={() => { }}
                   />
                 ))}
 

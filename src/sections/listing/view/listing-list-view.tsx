@@ -59,6 +59,7 @@ export default function TourListView({ fromUserDetails, userId }: ListingsListVi
   const openFilters = useBoolean();
 
   const [listData, setListData] = useState<IListingItem[]>([]);
+  console.log('listData', listData);
   const [listMeta, setListMeta] = useState<any>();
   const [categoryOptions, setCategoryOptions] = useState<
     {
@@ -203,20 +204,17 @@ export default function TourListView({ fromUserDetails, userId }: ListingsListVi
   // Excel export function
   // const handleExport = () => {
   //   const dataForExport = listData?.map((entry: any) => ({
-  //     Name: entry.user.name,
-  //     // Date: formatDate(entry.date),
-  //     "Time In": entry.time_in ? entry.time_in : "N/A",
-  //     "Time Out": entry.time_out ? entry.time_out : "N/A",
-  //     Status: entry.status || "N/A",
+  //     Title: entry.title,
+  //     Address: entry.address
   //   }));
 
   //   const worksheet = XLSX.utils.json_to_sheet(dataForExport);
   //   const workbook = XLSX.utils.book_new();
-  //   XLSX.utils.book_append_sheet(workbook, worksheet, "Attendance Report");
+  //   XLSX.utils.book_append_sheet(workbook, worksheet, "Tour List Report");
   //   const today = new Date().toISOString().split("T")[0];
-  //   XLSX.writeFile(workbook, `attendance_report_${today}.xlsx`);
+  //   XLSX.writeFile(workbook, `tour_list_report_${today}.xlsx`);
   // };
-  
+
 
   return (
     <Container maxWidth={settings.themeStretch ? false : 'lg'}>
@@ -241,9 +239,9 @@ export default function TourListView({ fromUserDetails, userId }: ListingsListVi
               mb: { xs: 3, md: 5 },
             }}
           />
-          <Button variant="contained" >
+          {/* <Button variant="contained" onClick={handleExport}>
             <Iconify icon="solar:download-bold" sx={{ marginRight: 1 }} /> Download
-          </Button>
+          </Button> */}
         </Stack>
       )}
 

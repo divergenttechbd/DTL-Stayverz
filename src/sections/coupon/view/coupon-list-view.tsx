@@ -31,63 +31,58 @@ import {
   TableSelectedAction,
   TablePaginationCustom,
 } from 'src/components/table';
-import { downloadCSV, getBookings } from 'src/utils/queries/bookings';
+import { downloadUserCSV, getUsers, updateUser } from 'src/utils/queries/users';
 // types
-import { } from 'src/types/user';
-import { IBookingTableFilters, IBookingTableFilterValue } from 'src/types/booking';
+import { IUserTableFilters, IUserTableFilterValue } from 'src/types/user';
+// import { downloadCSV } from 'src/utils/queries/bookings';
 import { Stack } from '@mui/material';
-import { Box } from '@mui/system';
+
 //
-import SalesReportTableToolbar from '../booking-table-toolbar';
-import SalesReportTableFiltersResult from '../booking-table-filters-result';
-import SalesReportTableRow from '../booking-table-row';
+import UserTableRow from '../user-table-row';
+import UserTableToolbar from '../user-table-toolbar';
+import UserTableFiltersResult from '../user-table-filters-result';
 
 // ----------------------------------------------------------------------
 
 const STATUS_OPTIONS = [
   { value: 'all', label: 'All' },
-  { value: 'currently_hosting', label: 'Currently Hosting' },
-  { value: 'completed', label: 'Completed' },
+  { value: 'active', label: 'Active' },
+  { value: 'deactivated', label: 'Deactivated' },
+  { value: 'restricted', label: 'Restricted' },
 ];
 
 const TABLE_HEAD = [
-  { id: 'guest', label: 'Guest', width: 180 },
-  { id: 'host', label: 'Host', width: 180 },
-  { id: 'check_in', label: 'Check-in', width: 100 },
-  { id: 'check_out', label: 'Checkout', width: 100 },
-  { id: 'booked_on', label: 'Booked', width: 100 },
-  { id: 'listing', label: 'Listing', width: 250 },
-  { id: 'confirmation_code', label: 'Confirmation Code', width: 100 },
-  { id: 'paid_amount', label: 'Guest Paid', width: 100 },
-  { id: 'guest_service_charge', label: 'Gateway Fee', width: 100 },
-  { id: 'host_service_charge', label: 'Host Service Charge', width: 100 },
-  { id: 'host_pay_out', label: 'Host Payout', width: 100 },
-  { id: 'total_profit', label: 'Total Profit', width: 100 },
+  { id: 'full_name', label: 'Name' },
+  { id: 'phone_number', label: 'Phone Number', width: 180 },
+  { id: 'date_joined', label: 'Joined At', width: 220 },
+  { id: 'u_type', label: 'Role', width: 180 },
+  { id: 'identity_verification_status', label: 'Verification Status', width: 100 },
   { id: '', label: 'Action', width: 88 },
 ];
 
-const defaultFilters: IBookingTableFilters = {
+const defaultFilters: IUserTableFilters = {
   search: '',
-  created_at_after: null,
-  created_at_before: null,
+  u_type: '',
   status: 'all',
-  host: null,
+  identity_verification_status: '',
+  date_joined_after: null,
+  date_joined_before: null,
 };
 
 // ----------------------------------------------------------------------
 
-export default function SalesReportListView() {
+export default function CouponListView() {
   const table = useTable({
     defaultCurrentPage: 0,
     defaultRowsPerPage: 10,
   });
   const settings = useSettingsContext();
   const confirm = useBoolean();
+  const downloadConfirm = useBoolean();
 
   const [tableData, setTableData] = useState<any>([]);
   const [tableMeta, setTableMeta] = useState<any>({ total: 0 });
   const [filters, setFilters] = useState(defaultFilters);
-  console.log('tableData', tableData);
 
   const dataFiltered = tableData;
   const canReset = !isEqual(defaultFilters, filters);
@@ -95,7 +90,7 @@ export default function SalesReportListView() {
   const notFound = (!dataFiltered.length && canReset) || !dataFiltered.length;
 
   const handleFilters = useCallback(
-    (name: string, value: IBookingTableFilterValue) => {
+    (name: string, value: IUserTableFilterValue) => {
       table.onResetPage();
       setFilters((prevState) => ({
         ...prevState,
@@ -118,18 +113,24 @@ export default function SalesReportListView() {
 
   const handleDownload = useCallback(async () => {
     try {
-      await downloadCSV(
+      await downloadUserCSV(
         table.selected.length
           ? {
             ids: table.selected,
           }
           : {
-            created_at_gte: filters.created_at_after,
-            created_at_lte: filters.created_at_before,
-            host_id: filters.host?.value,
+            date_joined_after: filters.date_joined_after
+              ? format(filters.date_joined_after, 'yyyy-MM-dd')
+              : null,
+            date_joined_before: filters.date_joined_before
+              ? format(filters.date_joined_before, 'yyyy-MM-dd')
+              : null,
+            u_type: filters.u_type,
+            identity_verification_status: filters.identity_verification_status,
             search: filters.search,
-            status: filters.status,
-            event_type: filters.status === 'all' ? null : filters.status,
+            status: filters.status === 'all' ? null : filters.status,
+            page_size: 0,
+            report_download: true,
           }
       );
     } catch (e) {
@@ -137,42 +138,97 @@ export default function SalesReportListView() {
     }
   }, [table, filters]);
 
-  const getBookingList = useCallback(async (data: any) => {
+  const getUserList = useCallback(async (data: any) => {
     try {
-      const res = await getBookings(data);
+      const res = await getUsers(data);
       if (!res.success) throw res.data;
       setTableData(res.data);
-      setTableMeta({
-        ...res.meta_data,
-        event_stats: {
-          ...res.event_stats,
-          all_count:
-            res.event_stats.currently_hosting_count +
-            res.event_stats.completed_count +
-            res.event_stats.upcoming_count,
-        },
-      });
+      setTableMeta({ ...res.meta_data, user_status_count: res.user_status_count });
     } catch (err) {
       console.log(err);
     }
   }, []);
 
   useEffect(() => {
-    getBookingList({
-      created_at_after: filters.created_at_after
-        ? format(filters.created_at_after, 'yyyy-MM-dd')
+    getUserList({
+      ...filters,
+      stats: true,
+      date_joined_after: filters.date_joined_after
+        ? format(filters.date_joined_after, 'yyyy-MM-dd')
         : null,
-      bookings: true,
-      host: filters.host?.value,
-      created_at_before: filters.created_at_before
-        ? format(filters.created_at_before, 'yyyy-MM-dd')
+      date_joined_before: filters.date_joined_before
+        ? format(filters.date_joined_before, 'yyyy-MM-dd')
         : null,
+      identity_verification_status: filters.identity_verification_status?.replace(
+        'unverified',
+        'not_verified'
+      ),
       page_size: table.rowsPerPage,
       page: table.page + 1,
-      search: filters.search,
-      event_type: filters.status === 'all' ? null : filters.status,
+      status: filters.status === 'all' ? null : filters.status,
     });
-  }, [filters, getBookingList, table.page, table.rowsPerPage]);
+  }, [filters, getUserList, table.page, table.rowsPerPage]);
+
+  const handleVerify = async (userId: string, status: string) => {
+    if (status === "verified") {
+      try {
+        console.log(userId, status);
+        const res = await updateUser({
+          id: userId,
+          identity_status: "pending",
+        });
+        if (!res.success) throw res.data;
+        getUserList({
+          ...filters,
+          stats: true,
+          date_joined_after: filters.date_joined_after
+            ? format(filters.date_joined_after, 'yyyy-MM-dd')
+            : null,
+          date_joined_before: filters.date_joined_before
+            ? format(filters.date_joined_before, 'yyyy-MM-dd')
+            : null,
+          identity_verification_status: filters.identity_verification_status?.replace(
+            'unverified',
+            'not_verified'
+          ),
+          page_size: table.rowsPerPage,
+          page: table.page + 1,
+          status: filters.status === 'all' ? null : filters.status,
+        })
+      } catch (err) {
+        console.log(err);
+      }
+    }
+    else if (status === "not_verified" || status === "pending") {
+      try {
+        console.log(userId, status);
+        const res = await updateUser({
+          id: userId,
+          identity_status: "verified",
+        });
+        if (!res.success) throw res.data;
+        getUserList({
+          ...filters,
+          stats: true,
+          date_joined_after: filters.date_joined_after
+            ? format(filters.date_joined_after, 'yyyy-MM-dd')
+            : null,
+          date_joined_before: filters.date_joined_before
+            ? format(filters.date_joined_before, 'yyyy-MM-dd')
+            : null,
+          identity_verification_status: filters.identity_verification_status?.replace(
+            'unverified',
+            'not_verified'
+          ),
+          page_size: table.rowsPerPage,
+          page: table.page + 1,
+          status: filters.status === 'all' ? null : filters.status,
+        })
+      } catch (err) {
+        console.log(err);
+      }
+    }
+  }
 
   return (
     <>
@@ -185,18 +241,16 @@ export default function SalesReportListView() {
         >
           <CustomBreadcrumbs
             heading="List"
-            links={[
-              { name: 'Dashboard', href: paths.dashboard.root },
-              { name: 'Sales Report List' },
-            ]}
+            links={[{ name: 'Dashboard', href: paths.dashboard.root }, { name: 'User List' }]}
             sx={{
               mb: { xs: 3, md: 5 },
             }}
           />
-          <Button variant="contained" onClick={confirm.onTrue}>
+          <Button variant="contained" onClick={downloadConfirm.onTrue}>
             <Iconify icon="solar:download-bold" sx={{ marginRight: 1 }} /> Download
           </Button>
         </Stack>
+
         <Card>
           <Tabs
             value={filters.status}
@@ -224,17 +278,24 @@ export default function SalesReportListView() {
                       'default'
                     }
                   >
-                    {tableMeta.event_stats?.[`${tab.value}_count`]}
+                    {tab.value === 'all'
+                      ? tableMeta.user_status_count?.reduce(
+                        (acc: number, cur: any) => acc + cur.status_count,
+                        0
+                      )
+                      : tableMeta?.user_status_count?.find(
+                        (count: any) => count.status === tab.value
+                      )?.status_count || 0}
                   </Label>
                 }
               />
             ))}
           </Tabs>
 
-          <SalesReportTableToolbar filters={filters} onFilters={handleFilters} />
+          <UserTableToolbar filters={filters} onFilters={handleFilters} />
 
           {canReset && (
-            <SalesReportTableFiltersResult
+            <UserTableFiltersResult
               filters={filters}
               onFilters={handleFilters}
               onResetFilters={handleResetFilters}
@@ -253,6 +314,13 @@ export default function SalesReportListView() {
                   checked,
                   tableData?.map((row: any) => row.id)
                 )
+              }
+              action={
+                <Tooltip title="Delete">
+                  <IconButton color="primary" onClick={confirm.onTrue}>
+                    <Iconify icon="solar:trash-bin-trash-bold" />
+                  </IconButton>
+                </Tooltip>
               }
             />
 
@@ -275,13 +343,14 @@ export default function SalesReportListView() {
 
                 <TableBody>
                   {tableData.map((row: any) => (
-                    <SalesReportTableRow
+                    <UserTableRow
                       key={row.id}
                       row={row}
                       selected={table.selected.includes(row.id)}
                       onSelectRow={() => table.onSelectRow(row.id)}
                       onDeleteRow={() => { }}
                       onEditRow={() => { }}
+                      onVerify={() => handleVerify(row.id, row.identity_verification_status)}
                     />
                   ))}
 
@@ -307,6 +376,27 @@ export default function SalesReportListView() {
         open={confirm.value}
         onClose={confirm.onFalse}
         title="Delete"
+        content={
+          <>
+            Are you sure want to delete <strong> {table.selected.length} </strong> items?
+          </>
+        }
+        action={
+          <Button
+            variant="contained"
+            color="error"
+            onClick={() => {
+              confirm.onFalse();
+            }}
+          >
+            Delete
+          </Button>
+        }
+      />
+      <ConfirmDialog
+        open={downloadConfirm.value}
+        onClose={downloadConfirm.onFalse}
+        title="Delete"
         content={<>Are you sure want to download report?</>}
         action={
           <Button
@@ -314,7 +404,7 @@ export default function SalesReportListView() {
             color="success"
             onClick={() => {
               handleDownload();
-              confirm.onFalse();
+              downloadConfirm.onFalse();
             }}
           >
             Download

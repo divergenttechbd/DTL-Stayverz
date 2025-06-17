@@ -132,7 +132,7 @@ export default function TourDetailsView({ id }: Props) {
       />
       {renderTabs}
 
-      {currentTab === 'content' && <TourDetailsContent listing={currentListing} />}
+      {currentTab === 'content' && <TourDetailsContent listing={currentListing} getListingDetails={getListingDetails}/>}
 
       {/* Dialog for both verification & Listing Status */}
       <ConfirmDialog

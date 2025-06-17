@@ -103,6 +103,11 @@ export function useNavData() {
             path: paths.dashboard.blog.root,
             icon: ICONS.job,
           },
+          {
+            title: 'Coupon',
+            path: paths.dashboard.blog.root,
+            icon: ICONS.invoice,
+          },
         ],
       },
       {

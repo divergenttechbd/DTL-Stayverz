@@ -1,7 +1,9 @@
 import isEqual from 'lodash/isEqual'
 import { useCallback, useEffect, useState } from 'react'
+import * as XLSX from "xlsx";
 // @mui
 import Button from '@mui/material/Button'
+import Stack from '@mui/material/Stack'
 import Card from '@mui/material/Card'
 import Container from '@mui/material/Container'
 import IconButton from '@mui/material/IconButton'
@@ -31,7 +33,7 @@ import {
   TableSelectedAction,
   useTable,
 } from 'src/components/table'
-import { getBookings } from 'src/utils/queries/bookings'
+import { getBookings, cancelBooking } from 'src/utils/queries/bookings'
 // types
 import { IBookingTableFilters, IBookingTableFilterValue } from 'src/types/booking'
 import { } from 'src/types/user'
@@ -94,6 +96,7 @@ export default function BookingListView({
   const confirm = useBoolean();
 
   const [tableData, setTableData] = useState<any>([]);
+
   const [tableMeta, setTableMeta] = useState<any>({ total: 0 });
   const [filters, setFilters] = useState(defaultFilters);
 
@@ -144,28 +147,6 @@ export default function BookingListView({
     }
   }, []);
 
-  const handleCancel = async (id: number) => {
-    try {
-      // const res = await cancelBooking({ id: id,  });
-      // if (!res.success) throw res.data;
-      console.log(id);
-      getBookingList({ page: table.page + 1, page_size: table.rowsPerPage });
-    } catch (err) {
-      console.log(err);
-    }
-  };
-
-  //   const handleCancel = async (guest_id: number, invoice_no: string) => {
-  //   try {
-  //     const res = await cancelBooking({ guest_id: guest_id, invoice_no: invoice_no });
-  //     if (!res.success) throw res.data;
-  //     console.log(id);
-  //     getBookingList({ page: table.page + 1, page_size: table.rowsPerPage });
-  //   } catch (err) {
-  //     console.log(err);
-  //   }
-  // };
-
   useEffect(() => {
     getBookingList({
       created_at_after: filters.created_at_after
@@ -184,17 +165,77 @@ export default function BookingListView({
     });
   }, [filters, getBookingList, table.page, table.rowsPerPage, fromUserDetails, userId, userType]);
 
+  const handleCancel = async (guestId: number, invoiceNo: string) => {
+    try {
+      const res = await cancelBooking(
+        {
+          id: guestId,
+          invoice: invoiceNo,
+          cancellation_reason: "Canceled by Admin",
+        }
+      );
+      if (!res.success) throw res.data;
+      // console.log(id);
+      getBookingList({ bookings: true, page: table.page + 1, page_size: table.rowsPerPage, search: filters.search });
+    } catch (err) {
+      console.log(err);
+    }
+  };
+
+  // Excel export function
+  const handleExport = async () => {
+
+    try {
+      const res = await getBookings({ bookings: true });
+      if (!res.success) throw res.data;
+      console.log(res.data);
+    } catch (err) {
+      console.log(err);
+    }
+
+    const dataForExport = tableData?.map((entry: any) => ({
+      "Guest Name": entry?.guest?.full_name,
+      "Guest Phone Number": entry?.guest?.phone_number,
+      "Host Name": entry?.host?.full_name,
+      "Host Phone Number": entry?.host?.phone_number,
+      "Check-In": entry?.check_in,
+      "Check-Out": entry?.check_out,
+      "Booking Date & Time": entry?.created_at,
+      "Listing": entry?.listing?.title,
+      "Confirmation Code": entry?.reservation_code,
+      "Guest Paid": entry?.paid_amount,
+      "Review Details": entry?.reviews[0]?.rating,
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(dataForExport);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Booking List Report");
+    const today = new Date().toISOString().split("T")[0];
+    XLSX.writeFile(workbook, `booking_list_report_${today}.xlsx`);
+
+  };
+
   return (
     <>
       <Container maxWidth={settings.themeStretch ? false : 'lg'}>
         {!fromUserDetails && (
-          <CustomBreadcrumbs
-            heading="List"
-            links={[{ name: 'Dashboard', href: paths.dashboard.root }, { name: 'Booking List' }]}
-            sx={{
-              mb: { xs: 3, md: 5 },
-            }}
-          />
+          <Stack
+            spacing={3}
+            justifyContent="space-between"
+            alignItems={{ xs: 'flex-end', sm: 'center' }}
+            direction={{ xs: 'column', sm: 'row' }}
+          >
+            <CustomBreadcrumbs
+              heading="List"
+              links={[{ name: 'Dashboard', href: paths.dashboard.root }, { name: 'Booking List' }]}
+              sx={{
+                mb: { xs: 3, md: 5 },
+              }}
+            />
+            <Button variant="contained" onClick={handleExport}>
+              <Iconify icon="solar:download-bold" sx={{ marginRight: 1 }} /> Download
+            </Button>
+          </Stack>
         )}
 
         <Card>
@@ -297,7 +338,7 @@ export default function BookingListView({
                       onSelectRow={() => table.onSelectRow(row.id)}
                       onDeleteRow={() => { }}
                       onEditRow={() => { }}
-                      onCancel={() => { handleCancel(row.id) }}
+                      onCancel={() => { handleCancel(row.guest.id, row.invoice_no) }}
                     />
                   ))}
 
@@ -317,7 +358,7 @@ export default function BookingListView({
             onChangeDense={table.onChangeDense}
           />
         </Card>
-      </Container>
+      </Container >
 
       <ConfirmDialog
         open={confirm.value}

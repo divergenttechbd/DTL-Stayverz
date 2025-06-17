@@ -51,6 +51,12 @@ export const paths = {
       new: `${ROOTS.DASHBOARD}/blog/new`,
       edit: (id: string) => `${ROOTS.DASHBOARD}/blog/${id}/edit`,
     },
+    coupon: {
+      root: `${ROOTS.DASHBOARD}/coupon`,
+      details: (id: string) => `${ROOTS.DASHBOARD}/coupon/${id}/details`,
+      new: `${ROOTS.DASHBOARD}/blog/new`,
+      edit: (id: string) => `${ROOTS.DASHBOARD}/blog/${id}/edit`,
+    },
 
     transactions: {
       root: `${ROOTS.DASHBOARD}/transactions`,
