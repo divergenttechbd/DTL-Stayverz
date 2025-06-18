@@ -291,6 +291,7 @@ class PublicUserLoginAPIView(views.APIView):
             ttl=5 * 60 * 60,
         )
         cookie_data = generate_cookie_data("bearer " + data["access_token"])
+        print(cookie_data, " ---- c token ---")
         response.set_cookie(**cookie_data)
 
         response.data = {

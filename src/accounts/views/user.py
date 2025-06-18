@@ -6,7 +6,7 @@ from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.request import Request
-from rest_framework.generics import ListAPIView, get_object_or_404
+from rest_framework.generics import ListAPIView, get_object_or_404, UpdateAPIView
 from rest_framework.views import APIView
 from rest_framework.decorators import api_view, permission_classes
 from django.db import transaction
@@ -21,7 +21,7 @@ from accounts.serializers import (
     HostGuestUserSerializer,
     UserIdentityVerificationSerializer,
     UserProfileSerializer, UserLiveVerificationSerializer,
-    SuperhostStatusHistorySerializer, HostPublicProfileSerializer,
+    SuperhostStatusHistorySerializer, HostPublicProfileSerializer, HostCohostingAvailabilitySerializer,
 )
 from accounts.services import get_superhost_progress
 from base.cache.redis_cache import delete_cache, set_cache
@@ -197,6 +197,37 @@ class UserProfileRetrieveUpdateAPIView(APIView):
 
         return Response(response_user_data, status=status.HTTP_200_OK)
 
+
+
+class HostCohostingAvailabilityUpdateAPIView(UpdateAPIView):
+    """
+    Allows a host to update their co-hosting availability status.
+    Accepts a PATCH request with a boolean `is_available_for_cohosting`.
+    """
+    serializer_class = HostCohostingAvailabilitySerializer
+    permission_classes = [IsAuthenticated, IsHostUser]
+    http_method_names = ['patch']
+    swagger_tags = ["Co-host"]
+
+    def get_object(self):
+        """
+        This view ensures the user can only update their own profile.
+        """
+        return self.request.user
+
+    def update(self, request, *args, **kwargs):
+        """
+        Override the default update method to provide a custom success response.
+        """
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+
+        return Response({
+            "message": "Co-hosting availability updated successfully.",
+            "data": serializer.data
+        }, status=status.HTTP_200_OK)
 
 class UserUnreadMessageCountAPIView(APIView):
     permission_classes = (IsAuthenticated,)

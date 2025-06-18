@@ -13,6 +13,9 @@ from listings.serializers import (
     ListingStatusUpdateSerializer,
 )
 
+from django.contrib.gis.geos import Point
+from django.contrib.gis.db.models.functions import Distance
+from django.contrib.gis.measure import D
 
 class AdminListingCategoryListApiView(views.APIView):
     permission_classes = (IsStaff,)
@@ -25,9 +28,6 @@ class AdminListingCategoryListApiView(views.APIView):
 
 class AdminListingListAPIView(ListAPIView):
     permission_classes = (IsStaff,)
-    # queryset = (
-    #     Listing.objects.filter().select_related("category").order_by("-created_at")
-    # )
     serializer_class = ListingSerializer
     http_method_names = ["get", "post"]
     filterset_class = ListingFilter
@@ -37,6 +37,30 @@ class AdminListingListAPIView(ListAPIView):
 
     def get_queryset(self):
         base_queryset = Listing.all_objects.select_related("category", "host")
+
+        # Check if location-based search parameters are provided
+        latitude = self.request.query_params.get("latitude")
+        longitude = self.request.query_params.get("longitude")
+        radius = self.request.query_params.get("radius", 25)  # Default radius: 25km
+
+        # Flag to track if distance annotation was applied
+        has_distance_annotation = False
+
+        if latitude and longitude:
+            try:
+                # Create a point for the search location
+                search_point = Point(float(longitude), float(latitude), srid=4326)
+
+                # Annotate queryset with distance and filter by radius
+                base_queryset = base_queryset.annotate(
+                    distance=Distance("location", search_point)
+                ).filter(
+                    distance__lte=D(km=float(radius))
+                )
+                has_distance_annotation = True
+            except (ValueError, TypeError):
+                # If latitude/longitude are invalid, continue with normal queryset
+                has_distance_annotation = False
 
         # Apply filterset manually to support custom filtering and deleted_status
         filterset = self.filterset_class(self.request.GET, queryset=base_queryset, request=self.request)
@@ -54,8 +78,16 @@ class AdminListingListAPIView(ListAPIView):
             filtered_qs = filtered_qs.order_by("-created_at")
         elif sort_by == "popular":
             filtered_qs = filtered_qs.order_by("-avg_rating")
+        elif sort_by == "nearest" and has_distance_annotation:
+            # Order by distance only if distance annotation exists
+            filtered_qs = filtered_qs.order_by("distance")
         else:
-            filtered_qs = filtered_qs.order_by("-created_at")
+            # Default ordering - if location search is active and has distance annotation, order by distance
+            if has_distance_annotation:
+                filtered_qs = filtered_qs.order_by("distance")
+            else:
+                filtered_qs = filtered_qs.order_by("-created_at")
+
         return filtered_qs
 
     def get_serializer(self, *args, **kwargs):

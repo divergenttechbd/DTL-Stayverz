@@ -7,6 +7,7 @@ from accounts.views.user import (
     UserUnreadMessageCountAPIView,
     logout,
     mobile_login, UserSelfieVerificationAPIView, SuperhostProgressAPIView, ListHostsInRadiusAPIView,
+    HostCohostingAvailabilityUpdateAPIView,
 )
 from django.urls import path
 
@@ -18,6 +19,8 @@ urlpatterns = [
         UserProfileRetrieveUpdateAPIView.as_view(),
         name="user_profile_get_update",
     ),
+
+    path('profile/co-hosting/availability/', HostCohostingAvailabilityUpdateAPIView.as_view(), name='host-cohosting-availability-update'),
     path(
         "identity-verification/",
         UserIdentityVerificationAPIView.as_view(),

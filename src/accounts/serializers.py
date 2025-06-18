@@ -246,6 +246,14 @@ class SuperhostStatusHistorySerializer(serializers.ModelSerializer):
         ]
 
 
+class HostCohostingAvailabilitySerializer(serializers.ModelSerializer):
+    """
+    Serializer for updating a host's co-hosting availability status.
+    """
+    class Meta:
+        model = User
+        fields = ['is_available_for_cohosting']
+
 class HostPublicProfileSerializer(serializers.ModelSerializer):
 
     bio = serializers.CharField(source='userprofile.bio', read_only=True, allow_null=True)
