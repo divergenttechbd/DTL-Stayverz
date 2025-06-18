@@ -43,7 +43,7 @@ def create_tokens(user: User) -> tuple[str, str]:
 
 
 def generate_cookie_data(access_token: str) -> dict:
-    domain = "tibrow.divergenttechbd.com" if settings.ENVIRONMENT == "dev" else "tibrow.divergenttechbd.com"
+    domain = "stayverz.divergenttechbd.com" if settings.ENVIRONMENT == "dev" else "stayverz.divergenttechbd.com"
 
     return {
         "key": "cookie_token",
