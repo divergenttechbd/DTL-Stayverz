@@ -1,3 +1,4 @@
+import urllib.parse
 from typing import Any
 import jwt
 from fastapi import Request, HTTPException, WebSocket, WebSocketException, status
@@ -90,7 +91,17 @@ class JWTWebSocketBearer:
         return payload
 
     async def __call__(self, websocket: WebSocket) -> Any:
-        access_token = websocket.cookies.get("cookie_token")
+
+        print("=== WebSocket Cookie Debug ===")
+        print("All cookies:", dict(websocket.cookies))
+        print("Cookie keys:", list(websocket.cookies.keys()))
+        print("Raw cookie header:", websocket.headers.get("cookie"))
+        print("============================")
+        access_token = websocket.cookies.get("access_token")
+        access_token = "bearer " + access_token
+        # urllib.parse.unquote(access_token)
+        # access_token = "bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJmaXJzdF9uYW1lIjoiTXIiLCJsYXN0X25hbWUiOiJIb3N0IiwidXNlcm5hbWUiOiIwMTk3NTk5MTQxNF9ob3N0IiwidV90eXBlIjoiaG9zdCIsInBob25lX251bWJlciI6IjAxOTc1OTkxNDE0IiwiaXNfYWN0aXZlIjp0cnVlLCJleHAiOjE3NTAyNTkxMTAsInRva2VuX3R5cGUiOiJhY2Nlc3MifQ.rn7edSSz7FlDGBqRUBaA4rX0pwtbJf-g9E6VioY4g7k"
+        print(access_token, " access token")
         scheme, credentials = get_authorization_scheme_param(access_token)
 
         if not (access_token and scheme and credentials):

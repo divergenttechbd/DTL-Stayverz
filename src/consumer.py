@@ -14,7 +14,8 @@ async def main() -> None:
     queue_name = "main"
 
     # MongoDB setup
-    mongo_client = motor.motor_asyncio.AsyncIOMotorClient("mongodb://localhost:27017")
+    # mongo_client = motor.motor_asyncio.AsyncIOMotorClient("mongodb://localhost:27017")
+    mongo_client = motor.motor_asyncio.AsyncIOMotorClient("mongodb://192.168.7.172:27017")
     db = mongo_client["chat_service"]
     collection = db["User"]
 

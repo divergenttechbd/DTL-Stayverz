@@ -19,7 +19,8 @@ from src.modules.users.models import User
 
 
 async def main() -> None:
-    db = Database(mongo_uri="mongodb://localhost:27017/chat_service")
+    db = Database(mongo_uri="mongodb://192.168.7.172:27017/chat_service")
+    # db = Database(mongo_uri="mongodb://localhost:27017/chat_service")
     await db.connect_to_database()
     user = User(
         username="user3",

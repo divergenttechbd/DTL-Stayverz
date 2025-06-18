@@ -89,7 +89,8 @@ app = create_app()
 
 @app.on_event("startup")
 async def app_init() -> None:
-    db =  Database("mongodb://localhost:27017")
+    # db =  Database("mongodb://localhost:27017")
+    db =  Database("mongodb://192.168.7.172:27017")
     if await db.connect_to_database():
         logger.info("✅ MongoDB connected")
     else:
