@@ -50,6 +50,7 @@ class HostGuestUserSerializer(ModelSerializer):
             "avg_rating",
             "total_rating_count",
             "wishlist_listings",
+            "is_available_for_cohosting"
         )
         extra_kwargs = {
             "password": {"write_only": True},
