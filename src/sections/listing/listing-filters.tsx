@@ -240,6 +240,7 @@ export default function TourFilters({
         console.log('------------------', longitude);
         onFilters('latitude', latitude);
         onFilters('longitude', longitude);
+        onFilters('sort_by', 'nearest');
       }
       console.log('-----------------------------');
     } catch (err) {

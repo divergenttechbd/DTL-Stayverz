@@ -42,6 +42,7 @@ const defaultFilters: IListingFilters = {
   host: null,
   latitude: '',
   longitude: '',
+  radius: 25,
 };
 
 // ----------------------------------------------------------------------
@@ -106,6 +107,7 @@ export default function TourListView({ fromUserDetails, userId }: ListingsListVi
       host: userId || filters.host?.value,
       latitude: filters.latitude,
       longitude: filters.longitude,
+      radius: 25,
     });
   }, [filters, getListingList, userId]);
 

@@ -14,6 +14,7 @@ export type IListingFilters = {
   host: { label: string; value: string } | null;
   latitude: string;
   longitude: string;
+  radius: number;
 };
 
 // ----------------------------------------------------------------------

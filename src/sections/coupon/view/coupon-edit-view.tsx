@@ -1,24 +1,17 @@
 // @mui
-import Container from '@mui/material/Container'
-import Tab from '@mui/material/Tab'
-import Tabs from '@mui/material/Tabs'
+import Container from '@mui/material/Container';
 // routes
-import { paths } from 'src/routes/paths'
+import { paths } from 'src/routes/paths';
 // _mock
-import CustomBreadcrumbs from 'src/components/custom-breadcrumbs'
-import { useSettingsContext } from 'src/components/settings'
+import CustomBreadcrumbs from 'src/components/custom-breadcrumbs';
+import { useSettingsContext } from 'src/components/settings';
 //
-import { useCallback, useEffect, useState } from 'react'
-import Iconify from 'src/components/iconify'
-import { useTabs } from 'src/hooks/use-tabs'
-import { BookingListView } from 'src/sections/booking/view'
-import { TourListView } from 'src/sections/listing/view'
-import { PayoutListView } from 'src/sections/payout/view'
-import ReviewListView from 'src/sections/review/view/review-list-view'
-import HostPaymentMethods from 'src/sections/user/host-payment-methods'
-import { ITabs, IUserItem } from 'src/types/user'
-import { getUser } from 'src/utils/queries/users'
-import UserNewEditForm from '../user-new-edit-form'
+import { useCallback, useEffect, useState } from 'react';
+import Iconify from 'src/components/iconify';
+import { useTabs } from 'src/hooks/use-tabs';
+import { ITabs, IUserItem } from 'src/types/user';
+import CouponEditForm from '../coupon-edit-form';
+import { getCoupon } from '../../../utils/queries/coupon';
 
 // ----------------------------------------------------------------------
 
@@ -26,18 +19,16 @@ type Props = {
   id: string;
 };
 
-export default function UserEditView({ id }: Props) {
+export default function CouponEditView({ id }: Props) {
   const settings = useSettingsContext();
-  const [currentUser, setCurrentUser] = useState<IUserItem>();
-  const [userType, setUserType] = useState<string>('')
+  const [currentCoupon, setCurrentCoupon] = useState<IUserItem>();
 
   // profile details
-  const getUserDetails = useCallback(async () => {
+  const getCouponDetails = useCallback(async () => {
     try {
-      const res = await getUser(id);
+      const res = await getCoupon(id);
       if (!res.success) throw res.data;
-      setCurrentUser(res.data);
-      setUserType(res.data?.u_type)
+      setCurrentCoupon(res.data);
     } catch (err) {
       console.log(err);
     }
@@ -45,9 +36,9 @@ export default function UserEditView({ id }: Props) {
 
   useEffect(() => {
     if (id) {
-      getUserDetails();
+      getCouponDetails();
     }
-  }, [getUserDetails, id]);
+  }, [getCouponDetails, id]);
 
   // Tabs
   const tabs = useTabs('profile');
@@ -76,7 +67,7 @@ export default function UserEditView({ id }: Props) {
       value: 'payouts',
       label: 'Payouts',
       icon: <Iconify icon="tdesign:undertake-transaction" width={24} />,
-    },    
+    },
     {
       value: 'payment-methods',
       label: 'Payment Methods',
@@ -104,48 +95,8 @@ export default function UserEditView({ id }: Props) {
         }}
       />
 
-      <Tabs value={tabs.value} onChange={tabs.onChange} sx={{ mb: { xs: 3, md: 5 } }}>
-        {TABS.map((tab) => {
-          if(userType === 'guest' && (tab.value === 'payouts' || tab.value === 'payment-methods' || tab.value === 'listings')){   
-            return ''         
-          } 
-          return <Tab key={tab.value} label={tab.label} icon={tab.icon} value={tab.value} />
-          
-        })}
-      </Tabs>
 
-      {tabs.value === 'profile' && (
-        <UserNewEditForm currentUser={currentUser} getUserDetails={getUserDetails} />
-      )}
-      {tabs.value === 'listings' && (
-        <TourListView 
-          fromUserDetails 
-          userId={Number(id)}
-        />
-      )}
-      {tabs.value === 'bookings' && (
-        <BookingListView 
-          fromUserDetails 
-          userType={userType} 
-          userId={Number(id)} 
-        />
-      )}
-      {tabs.value === 'reviews' && (
-        <ReviewListView
-          fromUserDetails
-          userType={userType}
-          userId={Number(id)}
-        />
-      )}
-      {tabs.value === 'payouts' && (
-        <PayoutListView
-          fromUserDetails
-          userId={Number(id)}
-        />
-      )}
-      {tabs.value === 'payment-methods' && (
-        <HostPaymentMethods id={Number(id)}/>
-      )}
+      <CouponEditForm currentCoupon={currentCoupon} getCouponDetails={getCouponDetails} />
     </Container>
   );
 }

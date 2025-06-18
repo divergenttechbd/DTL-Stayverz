@@ -105,7 +105,7 @@ export function useNavData() {
           },
           {
             title: 'Coupon',
-            path: paths.dashboard.blog.root,
+            path: paths.dashboard.coupon.root,
             icon: ICONS.invoice,
           },
         ],

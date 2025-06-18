@@ -24,7 +24,7 @@ import BlogCreatePage from 'src/pages/post/new';
 import BlogEditPage from 'src/pages/post/edit';
 import BlogDetailsPage from 'src/pages/post/details';
 import NotificationPage from 'src/pages/dashboard/notification/list';
-import { CouponListView } from 'src/sections/coupon/view';
+// import CouponListView from 'src/pages/dashboard/coupon/list';
 
 // ----------------------------------------------------------------------
 
@@ -35,6 +35,9 @@ const InvoiceListPage = lazy(() => import('src/pages/dashboard/invoice/list'));
 // USER
 const UserListPage = lazy(() => import('src/pages/dashboard/user/list'));
 const UserEditPage = lazy(() => import('src/pages/dashboard/user/edit'));
+
+const CouponListView = lazy(() => import('src/pages/dashboard/coupon/list'));
+const CouponEditView = lazy(() => import('src/pages/dashboard/coupon/edit'));
 // APP
 const ChatPage = lazy(() => import('src/pages/dashboard/chat'));
 // TEST RENDER PAGE BY ROLE
@@ -127,8 +130,8 @@ export const dashboardRoutes = [
       {
         path: 'coupon',
         children: [
-          { path: 'list', element: <CouponListView /> },
-          { path: ':id/edit', element: <UserEditPage /> },
+          { element: <CouponListView />, index: true },
+          { path: ':id/edit', element: <CouponEditView /> },
         ],
       },
       {

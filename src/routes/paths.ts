@@ -53,9 +53,9 @@ export const paths = {
     },
     coupon: {
       root: `${ROOTS.DASHBOARD}/coupon`,
-      details: (id: string) => `${ROOTS.DASHBOARD}/coupon/${id}/details`,
-      new: `${ROOTS.DASHBOARD}/blog/new`,
-      edit: (id: string) => `${ROOTS.DASHBOARD}/blog/${id}/edit`,
+      edit: (id: string) => `${ROOTS.DASHBOARD}/coupon/${id}/edit`,
+      // details: (id: string) => `${ROOTS.DASHBOARD}/coupon/${id}/details`,
+      // new: `${ROOTS.DASHBOARD}/blog/new`,
     },
 
     transactions: {

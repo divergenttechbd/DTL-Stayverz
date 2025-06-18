@@ -38,9 +38,10 @@ import { IUserTableFilters, IUserTableFilterValue } from 'src/types/user';
 import { Stack } from '@mui/material';
 
 //
-import UserTableRow from '../user-table-row';
+import CouponTableRow from '../coupon-table-row';
 import UserTableToolbar from '../user-table-toolbar';
 import UserTableFiltersResult from '../user-table-filters-result';
+import { getCoupons } from '../../../utils/queries/coupon';
 
 // ----------------------------------------------------------------------
 
@@ -52,11 +53,13 @@ const STATUS_OPTIONS = [
 ];
 
 const TABLE_HEAD = [
-  { id: 'full_name', label: 'Name' },
-  { id: 'phone_number', label: 'Phone Number', width: 180 },
-  { id: 'date_joined', label: 'Joined At', width: 220 },
-  { id: 'u_type', label: 'Role', width: 180 },
-  { id: 'identity_verification_status', label: 'Verification Status', width: 100 },
+  { id: 'code', label: 'Code' },
+  { id: 'description', label: 'description', width: 220 },
+  { id: 'discount_type', label: 'Discount Type', width: 220 },
+  { id: 'discount_value', label: 'Discount Value', width: 180 },
+  { id: 'is_active', label: 'Status', width: 180 },
+  { id: 'uses_count', label: 'Uses Count', width: 180 },
+  { id: '', label: 'Validity', width: 180 },
   { id: '', label: 'Action', width: 88 },
 ];
 
@@ -116,22 +119,22 @@ export default function CouponListView() {
       await downloadUserCSV(
         table.selected.length
           ? {
-            ids: table.selected,
-          }
+              ids: table.selected,
+            }
           : {
-            date_joined_after: filters.date_joined_after
-              ? format(filters.date_joined_after, 'yyyy-MM-dd')
-              : null,
-            date_joined_before: filters.date_joined_before
-              ? format(filters.date_joined_before, 'yyyy-MM-dd')
-              : null,
-            u_type: filters.u_type,
-            identity_verification_status: filters.identity_verification_status,
-            search: filters.search,
-            status: filters.status === 'all' ? null : filters.status,
-            page_size: 0,
-            report_download: true,
-          }
+              date_joined_after: filters.date_joined_after
+                ? format(filters.date_joined_after, 'yyyy-MM-dd')
+                : null,
+              date_joined_before: filters.date_joined_before
+                ? format(filters.date_joined_before, 'yyyy-MM-dd')
+                : null,
+              u_type: filters.u_type,
+              identity_verification_status: filters.identity_verification_status,
+              search: filters.search,
+              status: filters.status === 'all' ? null : filters.status,
+              page_size: 0,
+              report_download: true,
+            }
       );
     } catch (e) {
       console.log(e);
@@ -142,93 +145,31 @@ export default function CouponListView() {
     try {
       const res = await getUsers(data);
       if (!res.success) throw res.data;
-      setTableData(res.data);
+      // setTableData(res.data);
       setTableMeta({ ...res.meta_data, user_status_count: res.user_status_count });
     } catch (err) {
       console.log(err);
     }
   }, []);
 
+  const getCouponList = useCallback(async (data: any) => {
+    try {
+      const res = await getCoupons(data);
+      if (!res.success) throw res.data;
+      console.log('coupon data--------------', res.data);
+      setTableData(res.data);
+      // setTableMeta({ ...res.meta_data, user_status_count: res.user_status_count });
+    } catch (err) {
+      console.log(err);
+    }
+  }, []);
+
   useEffect(() => {
-    getUserList({
-      ...filters,
-      stats: true,
-      date_joined_after: filters.date_joined_after
-        ? format(filters.date_joined_after, 'yyyy-MM-dd')
-        : null,
-      date_joined_before: filters.date_joined_before
-        ? format(filters.date_joined_before, 'yyyy-MM-dd')
-        : null,
-      identity_verification_status: filters.identity_verification_status?.replace(
-        'unverified',
-        'not_verified'
-      ),
+    getCouponList({
       page_size: table.rowsPerPage,
       page: table.page + 1,
-      status: filters.status === 'all' ? null : filters.status,
     });
-  }, [filters, getUserList, table.page, table.rowsPerPage]);
-
-  const handleVerify = async (userId: string, status: string) => {
-    if (status === "verified") {
-      try {
-        console.log(userId, status);
-        const res = await updateUser({
-          id: userId,
-          identity_status: "pending",
-        });
-        if (!res.success) throw res.data;
-        getUserList({
-          ...filters,
-          stats: true,
-          date_joined_after: filters.date_joined_after
-            ? format(filters.date_joined_after, 'yyyy-MM-dd')
-            : null,
-          date_joined_before: filters.date_joined_before
-            ? format(filters.date_joined_before, 'yyyy-MM-dd')
-            : null,
-          identity_verification_status: filters.identity_verification_status?.replace(
-            'unverified',
-            'not_verified'
-          ),
-          page_size: table.rowsPerPage,
-          page: table.page + 1,
-          status: filters.status === 'all' ? null : filters.status,
-        })
-      } catch (err) {
-        console.log(err);
-      }
-    }
-    else if (status === "not_verified" || status === "pending") {
-      try {
-        console.log(userId, status);
-        const res = await updateUser({
-          id: userId,
-          identity_status: "verified",
-        });
-        if (!res.success) throw res.data;
-        getUserList({
-          ...filters,
-          stats: true,
-          date_joined_after: filters.date_joined_after
-            ? format(filters.date_joined_after, 'yyyy-MM-dd')
-            : null,
-          date_joined_before: filters.date_joined_before
-            ? format(filters.date_joined_before, 'yyyy-MM-dd')
-            : null,
-          identity_verification_status: filters.identity_verification_status?.replace(
-            'unverified',
-            'not_verified'
-          ),
-          page_size: table.rowsPerPage,
-          page: table.page + 1,
-          status: filters.status === 'all' ? null : filters.status,
-        })
-      } catch (err) {
-        console.log(err);
-      }
-    }
-  }
+  }, [table.page, table.rowsPerPage, getCouponList]);
 
   return (
     <>
@@ -241,7 +182,7 @@ export default function CouponListView() {
         >
           <CustomBreadcrumbs
             heading="List"
-            links={[{ name: 'Dashboard', href: paths.dashboard.root }, { name: 'User List' }]}
+            links={[{ name: 'Dashboard', href: paths.dashboard.root }, { name: 'Coupon List' }]}
             sx={{
               mb: { xs: 3, md: 5 },
             }}
@@ -252,7 +193,7 @@ export default function CouponListView() {
         </Stack>
 
         <Card>
-          <Tabs
+          {/* <Tabs
             value={filters.status}
             onChange={handleFilterStatus}
             sx={{
@@ -280,19 +221,19 @@ export default function CouponListView() {
                   >
                     {tab.value === 'all'
                       ? tableMeta.user_status_count?.reduce(
-                        (acc: number, cur: any) => acc + cur.status_count,
-                        0
-                      )
+                          (acc: number, cur: any) => acc + cur.status_count,
+                          0
+                        )
                       : tableMeta?.user_status_count?.find(
-                        (count: any) => count.status === tab.value
-                      )?.status_count || 0}
+                          (count: any) => count.status === tab.value
+                        )?.status_count || 0}
                   </Label>
                 }
               />
             ))}
-          </Tabs>
+          </Tabs> */}
 
-          <UserTableToolbar filters={filters} onFilters={handleFilters} />
+          {/* <UserTableToolbar filters={filters} onFilters={handleFilters} /> */}
 
           {canReset && (
             <UserTableFiltersResult
@@ -343,14 +284,12 @@ export default function CouponListView() {
 
                 <TableBody>
                   {tableData.map((row: any) => (
-                    <UserTableRow
+                    <CouponTableRow
                       key={row.id}
                       row={row}
                       selected={table.selected.includes(row.id)}
                       onSelectRow={() => table.onSelectRow(row.id)}
-                      onDeleteRow={() => { }}
-                      onEditRow={() => { }}
-                      onVerify={() => handleVerify(row.id, row.identity_verification_status)}
+                      onDeleteRow={() => {}}
                     />
                   ))}
 
