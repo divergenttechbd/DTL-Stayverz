@@ -206,15 +206,7 @@ export default function CouponListView() {
           }
         />
         <Card>
-          {canReset && (
-            <UserTableFiltersResult
-              filters={filters}
-              onFilters={handleFilters}
-              onResetFilters={handleResetFilters}
-              results={tableMeta.total}
-              sx={{ p: 2.5, pt: 0 }}
-            />
-          )}
+
 
           <TableContainer sx={{ position: 'relative', overflow: 'unset' }}>
             <Scrollbar>

@@ -188,7 +188,7 @@ export default function ReferralListView() {
           )}
 
           <TableContainer sx={{ position: 'relative', overflow: 'unset' }}>
-            <TableSelectedAction
+            {/* <TableSelectedAction
               dense={table.dense}
               numSelected={table.selected.length}
               rowCount={tableData?.length}
@@ -205,7 +205,7 @@ export default function ReferralListView() {
                   </IconButton>
                 </Tooltip>
               }
-            />
+            /> */}
 
             <Scrollbar>
               <Table size={table.dense ? 'small' : 'medium'} sx={{ minWidth: 960 }}>
@@ -254,27 +254,7 @@ export default function ReferralListView() {
         </Card>
       </Container>
 
-      <ConfirmDialog
-        open={confirm.value}
-        onClose={confirm.onFalse}
-        title="Delete"
-        content={
-          <>
-            Are you sure want to delete <strong> {table.selected.length} </strong> items?
-          </>
-        }
-        action={
-          <Button
-            variant="contained"
-            color="error"
-            onClick={() => {
-              confirm.onFalse();
-            }}
-          >
-            Delete
-          </Button>
-        }
-      />
+
       <ConfirmDialog
         open={downloadConfirm.value}
         onClose={downloadConfirm.onFalse}
