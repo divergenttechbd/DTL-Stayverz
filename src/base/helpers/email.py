@@ -28,7 +28,7 @@ def send_email_using_default_django_backend(
     to_email: str, subject: str, text_content: str
 ) -> None:
     try:
-        email = EmailMultiAlternatives(subject, "", "your_email@gmail.com", [to_email])
+        email = EmailMultiAlternatives(subject, text_content,settings.FROM_EMAIL , [to_email])
         email.attach_alternative(text_content, "text/html")
         email.send()
         return None
