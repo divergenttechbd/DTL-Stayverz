@@ -1,0 +1,50 @@
+.price-range-slider .rc-slider-handle.rc-slider-handle-1,
+.price-range-slider .rc-slider-handle.rc-slider-handle-2 {
+  border: solid 2px #f66c0e;
+  cursor: pointer;
+}
+
+.price-range-slider .rc-slider-handle.rc-slider-handle-1.rc-slider-handle-dragging {
+  border: solid 2px #f66c0e;
+}
+
+.price-range-slider .rc-slider-rail {
+  position: absolute;
+  width: 100%;
+  height: 6px;
+  background-color: #e6e6e6;
+  border-radius: 20px;
+}
+
+.price-range-slider .rc-slider-track {
+  height: 6px;
+  background-color: #f66c0e;
+  border-radius: 6px;
+  opacity: 0.9;
+}
+
+.price-range-slider .rc-slider-handle {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  margin-top: -6px;
+  background-color: #fff;
+  border: solid 2px #f66c0e;
+  border-radius: 50%;
+  cursor: pointer;
+  cursor: grab;
+  opacity: 1;
+  touch-action: pan-x;
+}
+
+.price-range-slider .rc-slider-handle-dragging {
+  border-color: #f66c0e;
+  box-shadow: 0 0 0 5px #f66c0e;
+  cursor: pointer;
+}
+
+.price-range-slider .rc-slider-handle-dragging.rc-slider-handle-dragging.rc-slider-handle-dragging {
+  border-color: #f66c0e;
+  box-shadow: 0 0 0 5px #f66c0e;
+  cursor: pointer;
+}

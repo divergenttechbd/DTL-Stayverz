@@ -1,0 +1,54 @@
+name: Deployment
+
+on:
+  push:
+    branches:
+      - develop
+
+env:
+  SSH_KEY: ${{ secrets.SSH_KEY }}
+  DOMAIN: root@${{ vars.DOMAIN }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Create env file
+        run: |
+          touch .env
+          echo NEXT_PUBLIC_API_URL=${{ vars.NEXT_PUBLIC_API_URL }} >> .env
+          echo NEXT_PUBLIC_CHAT_API_URL=${{ vars.NEXT_PUBLIC_CHAT_API_URL }} >> .env
+          echo NEXT_PUBLIC_CHAT_SESSION_API_URL=${{ vars.NEXT_PUBLIC_CHAT_SESSION_API_URL }} >> .env
+          echo NEXT_PUBLIC_GOOGLE_MAP_API_KEY=${{ secrets.NEXT_PUBLIC_GOOGLE_MAP_API_KEY }} >> .env
+
+      - name: Build Docker image
+        run: |
+          docker build . -t guest-house-frontend:latest
+
+      - name: Save Docker image as .tar
+        run: |
+          docker save -o ~/image.tar guest-house-frontend:latest
+
+      - name: Copy Docker image to Droplet
+        run: |
+          eval $(ssh-agent) && echo "${{ secrets.SSH_KEY }}" | ssh-add - &&
+          mkdir -p ~/.ssh/ && touch ~/.ssh/known_hosts && ssh-keyscan -t rsa ${{ vars.DOMAIN }} >> ~/.ssh/known_hosts &&
+          rsync -e ssh -z ~/image.tar root@${{ vars.DOMAIN }}:~/frontend/
+  start:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Start docker container from image
+        run: |
+          eval $(ssh-agent) && echo "${{ secrets.SSH_KEY }}" | ssh-add - &&
+          mkdir -p ~/.ssh/ && touch ~/.ssh/known_hosts && ssh-keyscan -t rsa ${{ vars.DOMAIN }} >> ~/.ssh/known_hosts &&
+          ssh root@${{ vars.DOMAIN }} "docker stop guest-house-frontend || true && docker container prune -f || true && docker image rm guest-house-frontend:latest || true && docker image rmi guest-house-frontend:latest || true && docker load -i ~/frontend/image.tar && docker run -d -p 3000:3000 --name guest-house-frontend guest-house-frontend:latest"
+
+      - name: Cleanup
+        run: |
+          eval $(ssh-agent) && echo "${{ secrets.SSH_KEY }}" | ssh-add - &&
+          mkdir -p ~/.ssh/ && touch ~/.ssh/known_hosts && ssh-keyscan -t rsa ${{ vars.DOMAIN }} >> ~/.ssh/known_hosts &&
+          ssh root@${{ vars.DOMAIN }} "rm ~/frontend/image.tar"

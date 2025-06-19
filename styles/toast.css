@@ -1,0 +1,25 @@
+/* Toast Override Class */
+/* Toast 'bottom-center' position modified */
+.Toastify__toast-container--bottom-center {
+  right: 0;
+  left: auto !important;
+  transform: translateX(0%) !important;
+}
+
+/* For all toast */
+:root {
+  --toastify-font-family: inherit;
+}
+.Toastify__toast-container {
+  display: flex;
+  justify-content: center;
+}
+.Toastify__toast {
+  width: auto !important;
+  max-height: 60px !important;
+  min-height: 48px !important;
+}
+.Toastify__toast-icon {
+  height: 18px;
+  width: 18px;
+}

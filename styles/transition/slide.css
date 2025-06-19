@@ -1,0 +1,11 @@
+.transition-slide-enter {
+  @apply -translate-x-full;
+}
+
+.transition-slide-enter-active {
+  @apply transition ease-out duration-300 translate-x-0;
+}
+
+.transition-slide-exit {
+  @apply transition ease-out duration-300 -translate-x-full;
+}
