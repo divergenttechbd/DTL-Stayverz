@@ -14,24 +14,42 @@ from .models import Referral, ReferralReward, Coupon, RewardStatus, ReferralType
 # Assuming your User model is from settings.AUTH_USER_MODEL and you have a UserSerializer
 # from accounts.serializers import UserSerializer # Adjust path as needed
 # For this example, I'll define a placeholder UserSerializer
-class UserSerializer(serializers.Serializer): # Placeholder
-    id = serializers.IntegerField(read_only=True)
-    username = serializers.CharField(read_only=True)
-    full_name = serializers.CharField(read_only=True)
-    u_type = serializers.CharField(read_only=True)
-    image = serializers.URLField(read_only=True, allow_null=True)
+class UserSerializer(serializers.ModelSerializer): # Placeholder
+    # id = serializers.IntegerField(read_only=True)
+    # username = serializers.CharField(read_only=True)
+    full_name = serializers.SerializerMethodField()
+    # u_type = serializers.CharField(read_only=True)
+    # image = serializers.URLField(read_only=True, allow_null=True)
 
-
+    class Meta:
+        # Use the actual User model from your project
+        model = User
+        fields = ('id', 'username', 'full_name', 'u_type', 'image')
     # This is a placeholder. You should use your actual UserSerializer.
     # It's common to use DynamicFieldsModelSerializer or similar for flexibility.
+    def get_full_name(self, obj):
+        """
+        Combines the first_name and last_name fields into a single full_name.
+        Provides the username as a fallback if the name is blank.
+        """
+        # obj is the User instance
+        full_name = f"{obj.first_name} {obj.last_name}".strip()
+        # If the full_name is not empty, return it. Otherwise, return the username.
+        return full_name if full_name else obj.username
+
+    # This part handles the dynamic "fields" argument you were using.
+    # It allows ReferralSerializer to request only specific fields.
     def __init__(self, *args, **kwargs):
         fields = kwargs.pop('fields', None)
         super().__init__(*args, **kwargs)
+
         if fields:
             allowed = set(fields)
             existing = set(self.fields)
             for field_name in existing - allowed:
                 self.fields.pop(field_name)
+
+
 
 # If you have a BookingSerializer, you might want to import it for nested details
 # from bookings.serializers import MinimalBookingSerializer # Example
