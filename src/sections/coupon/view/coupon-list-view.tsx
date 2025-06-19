@@ -197,7 +197,7 @@ export default function CouponListView() {
                 variant="contained"
                 startIcon={<Iconify icon="mingcute:add-line" />}
               >
-                New User
+                New Coupon
               </Button>
               <Button variant="contained" onClick={downloadConfirm.onTrue}>
                 <Iconify icon="solar:download-bold" sx={{ marginRight: 1 }} /> Download
@@ -206,8 +206,6 @@ export default function CouponListView() {
           }
         />
         <Card>
-
-
           <TableContainer sx={{ position: 'relative', overflow: 'unset' }}>
             <Scrollbar>
               <Table size={table.dense ? 'small' : 'medium'} sx={{ minWidth: 960 }}>

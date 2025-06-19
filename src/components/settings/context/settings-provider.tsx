@@ -67,7 +67,7 @@ export function SettingsProvider({ children, defaultSettings }: SettingsProvider
     () => ({
       ...settings,
       onUpdate,
-      // Direction
+      // Direction,
       onChangeDirectionByLang,
       // Reset
       canReset,
