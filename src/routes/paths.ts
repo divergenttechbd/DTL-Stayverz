@@ -54,8 +54,10 @@ export const paths = {
     coupon: {
       root: `${ROOTS.DASHBOARD}/coupon`,
       edit: (id: string) => `${ROOTS.DASHBOARD}/coupon/${id}/edit`,
-      // details: (id: string) => `${ROOTS.DASHBOARD}/coupon/${id}/details`,
-      // new: `${ROOTS.DASHBOARD}/blog/new`,
+      new: `${ROOTS.DASHBOARD}/coupon/new`,
+    },
+    referral: {
+      root: `${ROOTS.DASHBOARD}/referral`,
     },
 
     transactions: {
@@ -73,7 +75,7 @@ export const paths = {
       new: `${ROOTS.DASHBOARD}/listing/new`,
       details: (id: string) => `${ROOTS.DASHBOARD}/listing/${id}`,
       edit: (id: string) => `${ROOTS.DASHBOARD}/listing/${id}/edit`,
-    },
+    },  
     salesReport: {
       root: `${ROOTS.DASHBOARD}/sales-report`,
       details: (id: string) => `${ROOTS.DASHBOARD}/sales-report/${id}/details`,

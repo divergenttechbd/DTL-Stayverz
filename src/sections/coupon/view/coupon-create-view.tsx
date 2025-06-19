@@ -6,38 +6,12 @@ import { paths } from 'src/routes/paths';
 import CustomBreadcrumbs from 'src/components/custom-breadcrumbs';
 import { useSettingsContext } from 'src/components/settings';
 //
-import { useCallback, useEffect, useState } from 'react';
-import CouponEditForm from '../coupon-edit-form';
-import { getCoupon } from '../../../utils/queries/coupon';
-import { ICouponItem } from '../../../types/coupon';
+import CouponCreateForm from '../coupon-create-form';
 
 // ----------------------------------------------------------------------
 
-type Props = {
-  id: string;
-};
-
-export default function CouponEditView({ id }: Props) {
+export default function CouponCreateView() {
   const settings = useSettingsContext();
-  const [currentCoupon, setCurrentCoupon] = useState<ICouponItem>();
-
-  // profile details
-  const getCouponDetails = useCallback(async () => {
-    try {
-      const res = await getCoupon(id);
-      if (!res.success) throw res.data;
-      setCurrentCoupon(res.data);
-    } catch (err) {
-      console.log(err);
-    }
-  }, [id]);
-
-  useEffect(() => {
-    if (id) {
-      getCouponDetails();
-    }
-  }, [getCouponDetails, id]);
-
   return (
     <Container maxWidth={settings.themeStretch ? false : 'lg'}>
       <CustomBreadcrumbs
@@ -58,7 +32,7 @@ export default function CouponEditView({ id }: Props) {
         }}
       />
 
-      <CouponEditForm currentCoupon={currentCoupon} getCouponDetails={getCouponDetails} />
+      <CouponCreateForm />
     </Container>
   );
 }

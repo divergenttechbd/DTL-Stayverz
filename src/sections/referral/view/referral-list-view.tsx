@@ -32,50 +32,42 @@ import {
   TableSelectedAction,
   TablePaginationCustom,
 } from 'src/components/table';
-import { downloadUserCSV, getUsers, updateUser } from 'src/utils/queries/users';
 // types
-import { IUserTableFilters, IUserTableFilterValue } from 'src/types/user';
+import { IUserTableFilterValue } from 'src/types/user';
 // import { downloadCSV } from 'src/utils/queries/bookings';
-import { Box, Stack } from '@mui/material';
+import { Stack } from '@mui/material';
+import ReferralTableRow from '../referral-table-row';
+import ReferralTableFiltersResult from '../referral-table-filters-result';
+import ReferralTableToolbar from '../referral-table-toolbar';
+import { getReferrals } from '../../../utils/queries/referral';
+import { IReferalTableFilters } from '../../../types/referral';
 
 //
-import CouponTableRow from '../coupon-table-row';
-import UserTableToolbar from '../user-table-toolbar';
-import UserTableFiltersResult from '../user-table-filters-result';
-import { getCoupons } from '../../../utils/queries/coupon';
 
 // ----------------------------------------------------------------------
 
-const STATUS_OPTIONS = [
-  { value: 'all', label: 'All' },
-  { value: 'active', label: 'Active' },
-  { value: 'deactivated', label: 'Deactivated' },
-  { value: 'restricted', label: 'Restricted' },
-];
-
 const TABLE_HEAD = [
-  { id: 'code', label: 'Code' },
-  { id: 'description', label: 'Description', width: 220 },
-  { id: 'discount_type', label: 'Discount Type', width: 220 },
-  { id: 'discount_value', label: 'Discount Value', width: 180 },
-  { id: 'is_active', label: 'Status', width: 180 },
-  { id: 'uses_count', label: 'Uses Count', width: 180 },
-  { id: '', label: 'Validity', width: 180 },
+  { id: 'full_name ', label: 'Full Name' },
+  { id: 'username', label: 'User' },
+  { id: 'total_host_referrals_made', label: 'Host Referrals Made', width: 150 },
+  { id: 'total_host_referrals_successful', label: 'Successful Host Referrals', width: 150 },
+  { id: 'total_host_referral_earnings', label: 'Host Referral Earnings', width: 150 },
+  { id: 'total_guest_referrals_made', label: 'Guest Referrals Made', width: 150 },
+  { id: 'total_guest_referrals_successful', label: 'Successful Guest Referrals', width: 150 },
+  { id: 'total_guest_referral_points', label: 'Guest Referral Points', width: 150 },
   { id: '', label: 'Action', width: 88 },
 ];
 
-const defaultFilters: IUserTableFilters = {
-  search: '',
+const defaultFilters: any = {
+  username: '',
+  email: '',
+  referral_type: '',
   u_type: '',
-  status: 'all',
-  identity_verification_status: '',
-  date_joined_after: null,
-  date_joined_before: null,
 };
 
 // ----------------------------------------------------------------------
 
-export default function CouponListView() {
+export default function ReferralListView() {
   const table = useTable({
     defaultCurrentPage: 0,
     defaultRowsPerPage: 10,
@@ -96,7 +88,7 @@ export default function CouponListView() {
   const handleFilters = useCallback(
     (name: string, value: IUserTableFilterValue) => {
       table.onResetPage();
-      setFilters((prevState) => ({
+      setFilters((prevState: any) => ({
         ...prevState,
         [name]: value,
       }));
@@ -108,38 +100,10 @@ export default function CouponListView() {
     setFilters(defaultFilters);
   }, []);
 
-  const handleDownload = useCallback(async () => {
+  const getReferralList = useCallback(async (data: any) => {
     try {
-      await downloadUserCSV(
-        table.selected.length
-          ? {
-              ids: table.selected,
-            }
-          : {
-              date_joined_after: filters.date_joined_after
-                ? format(filters.date_joined_after, 'yyyy-MM-dd')
-                : null,
-              date_joined_before: filters.date_joined_before
-                ? format(filters.date_joined_before, 'yyyy-MM-dd')
-                : null,
-              u_type: filters.u_type,
-              identity_verification_status: filters.identity_verification_status,
-              search: filters.search,
-              status: filters.status === 'all' ? null : filters.status,
-              page_size: 0,
-              report_download: true,
-            }
-      );
-    } catch (e) {
-      console.log(e);
-    }
-  }, [table, filters]);
-
-  const getCouponList = useCallback(async (data: any) => {
-    try {
-      const res = await getCoupons(data);
+      const res = await getReferrals(data);
       if (!res.success) throw res.data;
-      console.log('coupon data--------------', res.data);
       setTableData(res.data);
       // setTableMeta({ ...res.meta_data, user_status_count: res.user_status_count });
     } catch (err) {
@@ -148,33 +112,39 @@ export default function CouponListView() {
   }, []);
 
   useEffect(() => {
-    getCouponList({
+    getReferralList({
+      ...filters,
+      username: filters.username ? filters.username : null,
+      email: filters.email ? filters.email : null,
+      referral_type: filters.referral_type ? filters.referral_type : null,
+      u_type: filters.u_type ? filters.u_type : null,
       page_size: table.rowsPerPage,
       page: table.page + 1,
     });
-  }, [table.page, table.rowsPerPage, getCouponList]);
+  }, [filters, getReferralList, table.page, table.rowsPerPage]);
 
   const handleExport = async () => {
     try {
-      const res = await getCoupons({ page: 1, page_size: 100000000 });
+      const res = await getReferrals({ page: 1, page_size: 100000000 });
       if (!res.success) throw res.data;
       const reportData = res.data;
       const dataForExport = reportData?.map((entry: any) => ({
-        Code: entry?.code,
-        Description: entry?.description,
-        'Discount Type': entry?.discount_type,
-        'Discount Value': entry?.discount_value,
-        Status: entry?.is_active ? 'Active' : 'Inactive',
-        'Uses Code': entry?.uses_count,
-        'Valid From': entry?.valid_from,
-        'Valid To': entry?.valid_to,
+        'Full Name': entry?.full_name,
+        Email: entry?.email,
+        User: entry?.username,
+        'Host Referrals Made': entry?.total_host_referrals_made,
+        'Successfu Host Referrals': entry?.total_host_referrals_successful,
+        'Host Referral Earnings': entry?.total_host_referral_earnings,
+        'Guest Referrals Made': entry?.total_guest_referrals_made,
+        'Successfu Guest Referrals': entry?.total_guest_referrals_successful,
+        'Guest Referrals Points': entry?.total_guest_referral_points,
       }));
 
       const worksheet = XLSX.utils.json_to_sheet(dataForExport);
       const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, 'Coupon List Report');
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Referral List Report');
       const today = new Date().toISOString().split('T')[0];
-      XLSX.writeFile(workbook, `coupon_list_report_${today}.xlsx`);
+      XLSX.writeFile(workbook, `referral_list_report_${today}.xlsx`);
     } catch (err) {
       console.log(err);
     }
@@ -183,31 +153,32 @@ export default function CouponListView() {
   return (
     <>
       <Container maxWidth={settings.themeStretch ? false : 'lg'}>
-        <CustomBreadcrumbs
-          heading="List"
-          links={[{ name: 'Dashboard', href: paths.dashboard.root }, { name: 'Coupon List' }]}
-          sx={{
-            mb: { xs: 3, md: 5 },
-          }}
-          action={
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1 }}>
-              <Button
-                // component={RouterLink}
-                href={paths.dashboard.coupon.new}
-                variant="contained"
-                startIcon={<Iconify icon="mingcute:add-line" />}
-              >
-                New User
-              </Button>
-              <Button variant="contained" onClick={downloadConfirm.onTrue}>
-                <Iconify icon="solar:download-bold" sx={{ marginRight: 1 }} /> Download
-              </Button>
-            </Box>
-          }
-        />
+        <Stack
+          spacing={3}
+          justifyContent="space-between"
+          alignItems={{ xs: 'flex-end', sm: 'center' }}
+          direction={{ xs: 'column', sm: 'row' }}
+        >
+          <CustomBreadcrumbs
+            heading="List"
+            links={[
+              { name: 'Dashboard', href: paths.dashboard.referral.root },
+              { name: 'Referral List' },
+            ]}
+            sx={{
+              mb: { xs: 3, md: 5 },
+            }}
+          />
+          <Button variant="contained" onClick={downloadConfirm.onTrue}>
+            <Iconify icon="solar:download-bold" sx={{ marginRight: 1 }} /> Download
+          </Button>
+        </Stack>
+
         <Card>
+          <ReferralTableToolbar filters={filters} onFilters={handleFilters} />
+
           {canReset && (
-            <UserTableFiltersResult
+            <ReferralTableFiltersResult
               filters={filters}
               onFilters={handleFilters}
               onResetFilters={handleResetFilters}
@@ -217,6 +188,25 @@ export default function CouponListView() {
           )}
 
           <TableContainer sx={{ position: 'relative', overflow: 'unset' }}>
+            <TableSelectedAction
+              dense={table.dense}
+              numSelected={table.selected.length}
+              rowCount={tableData?.length}
+              onSelectAllRows={(checked) =>
+                table.onSelectAllRows(
+                  checked,
+                  tableData?.map((row: any) => row.id)
+                )
+              }
+              action={
+                <Tooltip title="Delete">
+                  <IconButton color="primary" onClick={confirm.onTrue}>
+                    <Iconify icon="solar:trash-bin-trash-bold" />
+                  </IconButton>
+                </Tooltip>
+              }
+            />
+
             <Scrollbar>
               <Table size={table.dense ? 'small' : 'medium'} sx={{ minWidth: 960 }}>
                 <TableHeadCustom
@@ -236,12 +226,13 @@ export default function CouponListView() {
 
                 <TableBody>
                   {tableData.map((row: any) => (
-                    <CouponTableRow
+                    <ReferralTableRow
                       key={row.id}
                       row={row}
                       selected={table.selected.includes(row.id)}
                       onSelectRow={() => table.onSelectRow(row.id)}
                       onDeleteRow={() => {}}
+                      onEditRow={() => {}}
                     />
                   ))}
 
@@ -263,6 +254,27 @@ export default function CouponListView() {
         </Card>
       </Container>
 
+      <ConfirmDialog
+        open={confirm.value}
+        onClose={confirm.onFalse}
+        title="Delete"
+        content={
+          <>
+            Are you sure want to delete <strong> {table.selected.length} </strong> items?
+          </>
+        }
+        action={
+          <Button
+            variant="contained"
+            color="error"
+            onClick={() => {
+              confirm.onFalse();
+            }}
+          >
+            Delete
+          </Button>
+        }
+      />
       <ConfirmDialog
         open={downloadConfirm.value}
         onClose={downloadConfirm.onFalse}

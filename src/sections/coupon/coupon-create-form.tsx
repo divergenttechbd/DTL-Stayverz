@@ -17,44 +17,21 @@ import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import Snackbar from '@mui/material/Snackbar';
 import Grid from '@mui/material/Unstable_Grid2';
-import { DatePicker } from '@mui/x-date-pickers';
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+
+import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
-import { deleteCoupon, updateCoupon } from 'src/utils/queries/coupon';
-import { format } from 'date-fns';
-import { useRouter } from '../../routes/hook';
+import { createCoupon } from 'src/utils/queries/coupon';
 import { ConfirmDialog } from '../../components/custom-dialog';
 import { useBoolean } from '../../hooks/use-boolean';
 import { paths } from '../../routes/paths';
+import { useRouter } from '../../routes/hook';
 
-type Props = {
-  currentCoupon?: any;
-  getCouponDetails?: Function;
-};
-
-export default function CouponEditForm({ currentCoupon, getCouponDetails }: Props) {
+export default function CouponCreateForm() {
   const router = useRouter();
   const confirm = useBoolean();
-  console.log('currentCoupon', currentCoupon);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
-
-  // const { handleSubmit, register, reset, control, watch } = useForm({
-  //   defaultValues: {
-  //     code: currentCoupon?.code,
-  //     description: currentCoupon?.description,
-  //     discount_type: currentCoupon?.discount_type,
-  //     discount_value: currentCoupon?.discount_value,
-  //     threshold_amount: currentCoupon?.threshold_amount,
-  //     valid_from: currentCoupon?.valid_from
-  //       ? format(new Date(currentCoupon.valid_from), 'yyyy/MM/dd')
-  //       : '',
-  //     valid_to: currentCoupon?.valid_to,
-  //     max_use: currentCoupon?.max_use,
-  //     is_active: currentCoupon?.is_active ?? true,
-  //   },
-  // });
 
   const { handleSubmit, register, reset, control, watch } = useForm({
     defaultValues: {
@@ -76,8 +53,7 @@ export default function CouponEditForm({ currentCoupon, getCouponDetails }: Prop
 
   const onSubmit = async (data: any) => {
     try {
-      const res = await updateCoupon({
-        id: currentCoupon?.id,
+      const res = await createCoupon({
         code: data?.code,
         description: data?.description,
         discount_type: data?.discount_type,
@@ -90,47 +66,34 @@ export default function CouponEditForm({ currentCoupon, getCouponDetails }: Prop
       });
       console.log('response', res);
       if (!res.success) throw res.data;
-      getCouponDetails?.();
       setSnackbarOpen(true);
+      router.push(paths.dashboard.coupon.root)
     } catch (err) {
       console.log(err);
     }
   };
 
-  const handleDelete = async () => {
-    try {
-      const res = await deleteCoupon({
-        id: currentCoupon?.id,
-      });
+  // useEffect(() => {
+  //   if (currentCoupon) {
+  //     reset({
+  //       code: currentCoupon.code,
+  //       description: currentCoupon.description,
+  //       discount_type: currentCoupon.discount_type,
+  //       discount_value: currentCoupon.discount_value,
+  //       threshold_amount: currentCoupon.threshold_amount,
+  //       valid_from: currentCoupon.valid_from
+  //         ? format(new Date(currentCoupon.valid_from), 'yyyy/MM/dd')
+  //         : '',
+  //       valid_to: currentCoupon.valid_to,
+  //       max_use: currentCoupon.max_use,
+  //       is_active: currentCoupon.is_active ?? true,
+  //     });
+  //   }
+  // }, [currentCoupon, reset]);
 
-      // if (!res.success) throw res.data;
-      router.push(paths.dashboard.coupon.root);
-    } catch (err) {
-      console.log(err);
-    }
-  };
-
-  useEffect(() => {
-    if (currentCoupon) {
-      reset({
-        code: currentCoupon.code,
-        description: currentCoupon.description,
-        discount_type: currentCoupon.discount_type,
-        discount_value: currentCoupon.discount_value,
-        threshold_amount: currentCoupon.threshold_amount,
-        valid_from: currentCoupon.valid_from
-          ? format(new Date(currentCoupon.valid_from), 'yyyy/MM/dd')
-          : '',
-        valid_to: currentCoupon.valid_to,
-        max_use: currentCoupon.max_use,
-        is_active: currentCoupon.is_active ?? true,
-      });
-    }
-  }, [currentCoupon, reset]);
-
-  useEffect(() => {
-    reset(currentCoupon);
-  }, [reset, currentCoupon]);
+  // useEffect(() => {
+  //   reset(currentCoupon);
+  // }, [reset, currentCoupon]);
 
   // const handleVerificationAction = useCallback(
   //   (action: '' | 'verified' | 'rejected') => () => {
@@ -241,7 +204,6 @@ export default function CouponEditForm({ currentCoupon, getCouponDetails }: Prop
                 {...register('threshold_amount')}
                 InputLabelProps={{ shrink: true }}
               />
-
               <LocalizationProvider dateAdapter={AdapterDateFns}>
                 <Controller
                   name="valid_from"
@@ -279,7 +241,6 @@ export default function CouponEditForm({ currentCoupon, getCouponDetails }: Prop
                   )}
                 />
               </LocalizationProvider>
-
               <TextField
                 label="Max Use"
                 {...register('max_use')}
@@ -307,19 +268,10 @@ export default function CouponEditForm({ currentCoupon, getCouponDetails }: Prop
                 </Stack>
               </Tooltip>
             </Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <LoadingButton type="submit" variant="contained" color="primary" sx={{ mt: 3 }}>
-                Update Details
-              </LoadingButton>
-              <LoadingButton
-                onClick={confirm.onTrue}
-                variant="contained"
-                color="error"
-                sx={{ mt: 3 }}
-              >
-                Delete
-              </LoadingButton>
-            </Box>
+
+            <LoadingButton type="submit" variant="contained" color="primary" sx={{ mt: 3 }}>
+              Create
+            </LoadingButton>
           </form>
         </Card>
       </Grid>
@@ -332,27 +284,9 @@ export default function CouponEditForm({ currentCoupon, getCouponDetails }: Prop
         onClose={handleSnackbarClose}
       >
         <Alert severity="success" variant="filled" sx={{ width: '100%' }}>
-          Coupon info updated!
+          Coupon created!
         </Alert>
       </Snackbar>
-      <ConfirmDialog
-        open={confirm.value}
-        onClose={confirm.onFalse}
-        title="Delete"
-        content={<>Are you sure want to delete this coupon?</>}
-        action={
-          <Button
-            variant="contained"
-            color="error"
-            onClick={() => {
-              handleDelete();
-              confirm.onFalse();
-            }}
-          >
-            Delete
-          </Button>
-        }
-      />
     </Grid>
   );
 }

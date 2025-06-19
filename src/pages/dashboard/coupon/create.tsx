@@ -2,22 +2,20 @@ import { Helmet } from 'react-helmet-async';
 // routes
 import { useParams } from 'src/routes/hook';
 // sections
-import { CouponEditView } from 'src/sections/coupon/view';
+import { CouponCreateView } from 'src/sections/coupon/view';
 
 // ----------------------------------------------------------------------
 
-export default function CouponEditPage() {
-  const params = useParams();
+export default function CouponCreatePage() {
 
-  const { id } = params;
 
   return (
     <>
       <Helmet>
-        <title> Dashboard: Coupon Edit</title>
+        <title> Dashboard: Create New Coupon</title>
       </Helmet>
 
-      <CouponEditView id={`${id}`} />
+      <CouponCreateView/>
     </>
   );
 }

@@ -2,11 +2,11 @@ import { Helmet } from 'react-helmet-async';
 // routes
 import { useParams } from 'src/routes/hook';
 // sections
-import { CouponEditView } from 'src/sections/coupon/view';
+import { ReferralDetailsView } from 'src/sections/referral/view';
 
 // ----------------------------------------------------------------------
 
-export default function CouponEditPage() {
+export default function ReferralDetailsPage() {
   const params = useParams();
 
   const { id } = params;
@@ -14,10 +14,10 @@ export default function CouponEditPage() {
   return (
     <>
       <Helmet>
-        <title> Dashboard: Coupon Edit</title>
+        <title> Dashboard: Referral Details</title>
       </Helmet>
 
-      <CouponEditView id={`${id}`} />
+      <ReferralDetailsView id={`${id}`} />
     </>
   );
 }

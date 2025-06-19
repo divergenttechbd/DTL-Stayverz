@@ -1,22 +1,25 @@
 // @mui
-import Card from '@mui/material/Card'
-import IconButton from '@mui/material/IconButton'
-import Link from '@mui/material/Link'
-import ListItemText from '@mui/material/ListItemText'
-import MenuItem from '@mui/material/MenuItem'
-import Stack from '@mui/material/Stack'
+import Card from '@mui/material/Card';
+import IconButton from '@mui/material/IconButton';
+import Link from '@mui/material/Link';
+import ListItemText from '@mui/material/ListItemText';
+import MenuItem from '@mui/material/MenuItem';
+import Stack from '@mui/material/Stack';
 // routes
-import { RouterLink } from 'src/routes/components'
-import { paths } from 'src/routes/paths'
+import { RouterLink } from 'src/routes/components';
+import { paths } from 'src/routes/paths';
 // utils
-import { fCurrency } from 'src/utils/format-number'
-import { fDateTime } from 'src/utils/format-time'
+import { fCurrency } from 'src/utils/format-number';
+import { fDateTime } from 'src/utils/format-time';
 // types
-import { IListingItem } from 'src/types/listing'
+import { IListingItem } from 'src/types/listing';
 // components
-import CustomPopover, { usePopover } from 'src/components/custom-popover'
-import Iconify from 'src/components/iconify'
-import Image from 'src/components/image'
+import CustomPopover, { usePopover } from 'src/components/custom-popover';
+import Iconify from 'src/components/iconify';
+import Image from 'src/components/image';
+import { useState } from 'react';
+import Snackbar from '@mui/material/Snackbar';
+import Alert from '@mui/material/Alert';
 
 // ----------------------------------------------------------------------
 
@@ -41,18 +44,20 @@ export default function TourItem({ tour, onView, onEdit, onDelete }: Props) {
     owner,
     avg_rating,
     total_booking_count,
-    status
+    status,
   } = tour;
 
-  let listing_status
-  if(status === 'in_progress'){
-    listing_status = 'In Progress'
-  } else if(status === 'restricted'){
-    listing_status = 'Restricted'
-  } else if(status === 'published'){
-    listing_status = 'Published'
-  } else if(status === 'unpublished'){
-    listing_status = 'Unpublished'
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+
+  let listing_status;
+  if (status === 'in_progress') {
+    listing_status = 'In Progress';
+  } else if (status === 'restricted') {
+    listing_status = 'Restricted';
+  } else if (status === 'published') {
+    listing_status = 'Published';
+  } else if (status === 'unpublished') {
+    listing_status = 'Unpublished';
   }
 
   const renderRating = (
@@ -162,7 +167,7 @@ export default function TourItem({ tour, onView, onEdit, onDelete }: Props) {
         },
         {
           label: `${listing_status}`,
-          icon: <Iconify icon="mdi:list-status" sx={{ color: 'primary.main' }}/>
+          icon: <Iconify icon="mdi:list-status" sx={{ color: 'primary.main' }} />,
         },
         {
           label: `${total_booking_count} Booked`,
@@ -182,6 +187,23 @@ export default function TourItem({ tour, onView, onEdit, onDelete }: Props) {
       ))}
     </Stack>
   );
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setSnackbarOpen(true);
+    } catch (err) {
+      console.error('Failed to copy URL:', err);
+    }
+  };
+
+  const handleSnackbarClose = (event?: React.SyntheticEvent | Event, reason?: string) => {
+    if (reason === 'clickaway') {
+      return;
+    }
+
+    setSnackbarOpen(false);
+  };
 
   return (
     <>
@@ -236,7 +258,27 @@ export default function TourItem({ tour, onView, onEdit, onDelete }: Props) {
           <Iconify icon="solar:trash-bin-trash-bold" />
           Delete
         </MenuItem>
+        <MenuItem
+          onClick={() => {
+            handleCopy();
+          }}
+        >
+          <Iconify icon="line-md:link" />
+          Share
+        </MenuItem>
       </CustomPopover>
+
+      <Snackbar
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+        open={snackbarOpen}
+        autoHideDuration={3000}
+        message=""
+        onClose={handleSnackbarClose}
+      >
+        <Alert severity="success" variant="filled" sx={{ width: '100%' }}>
+          Link Copied!
+        </Alert>
+      </Snackbar>
     </>
   );
 }

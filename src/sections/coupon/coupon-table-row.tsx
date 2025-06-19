@@ -29,12 +29,7 @@ type Props = {
   onDeleteRow: VoidFunction;
 };
 
-export default function CouponTableRow({
-  row,
-  selected,
-  onSelectRow,
-  onDeleteRow,
-}: Props) {
+export default function CouponTableRow({ row, selected, onSelectRow, onDeleteRow }: Props) {
   const {
     code,
     description,
@@ -57,16 +52,19 @@ export default function CouponTableRow({
   return (
     <>
       <TableRow hover selected={selected}>
-        <TableCell padding="checkbox">
-          <Checkbox checked={selected} onClick={onSelectRow} />
-        </TableCell>
-
+        <TableCell sx={{ whiteSpace: 'nowrap', textAlign: 'center' }}>#</TableCell>
         <TableCell sx={{ whiteSpace: 'nowrap' }}>{code}</TableCell>
-
         <TableCell sx={{ whiteSpace: 'nowrap' }}>{description}</TableCell>
         <TableCell sx={{ whiteSpace: 'nowrap' }}>{discount_type}</TableCell>
         <TableCell sx={{ whiteSpace: 'nowrap' }}>{discount_value}</TableCell>
-        <TableCell sx={{ whiteSpace: 'nowrap' }}>{is_active ? 'Active' : 'Inactive'}</TableCell>
+        <TableCell sx={{ whiteSpace: 'nowrap' }}>
+          <Label
+            variant="soft"
+            color={(is_active && 'success') || (!is_active && 'error') || 'default'}
+          >
+            {is_active ? 'Active' : 'Inactive'}
+          </Label>
+        </TableCell>
         <TableCell sx={{ whiteSpace: 'nowrap' }}>{uses_count}</TableCell>
         <TableCell sx={{ whiteSpace: 'nowrap' }}>
           {format(new Date(valid_from), 'yyyy/MM/dd')} - {format(new Date(valid_to), 'yyyy/MM/dd')}

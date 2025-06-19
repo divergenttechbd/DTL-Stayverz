@@ -137,8 +137,8 @@ export default function UserListView() {
         Email: entry?.email,
         'Host Name': entry?.host?.full_name,
         'Phone Number': entry?.phone_number,
-        Role: entry?.status,
-        Status: entry?.role,
+        Role: entry?.role,
+        Status: entry?.status,
       }));
 
       const worksheet = XLSX.utils.json_to_sheet(dataForExport);

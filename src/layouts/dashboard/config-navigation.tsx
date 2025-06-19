@@ -108,6 +108,11 @@ export function useNavData() {
             path: paths.dashboard.coupon.root,
             icon: ICONS.invoice,
           },
+          {
+            title: 'Referral',
+            path: paths.dashboard.referral.root,
+            icon: ICONS.tour  ,
+          },
         ],
       },
       {

@@ -37,7 +37,10 @@ const UserListPage = lazy(() => import('src/pages/dashboard/user/list'));
 const UserEditPage = lazy(() => import('src/pages/dashboard/user/edit'));
 
 const CouponListView = lazy(() => import('src/pages/dashboard/coupon/list'));
+const CouponCreateView = lazy(() => import('src/pages/dashboard/coupon/create'));
 const CouponEditView = lazy(() => import('src/pages/dashboard/coupon/edit'));
+
+const ReferalListView = lazy(() => import('src/pages/dashboard/referral/list'));
 // APP
 const ChatPage = lazy(() => import('src/pages/dashboard/chat'));
 // TEST RENDER PAGE BY ROLE
@@ -107,6 +110,7 @@ export const dashboardRoutes = [
           { element: <TourListPage />, index: true },
           { path: 'list', element: <TourListPage /> },
           { path: ':id', element: <TourDetailsPage /> },
+          { path: ':id/edit', element: <TourDetailsPage /> },
         ],
       },
       {
@@ -131,7 +135,14 @@ export const dashboardRoutes = [
         path: 'coupon',
         children: [
           { element: <CouponListView />, index: true },
-          { path: ':id/edit', element: <CouponEditView /> },
+          { path: ':id/edit', element: <CouponEditView /> }, 
+          { path: 'new', element: <CouponCreateView /> }, 
+        ],
+      },
+      {
+        path: 'referral',
+        children: [
+          { element: <ReferalListView />, index: true },
         ],
       },
       {

@@ -10,9 +10,19 @@ export const getCoupon: any = async (id: number) => {
   return axios.get<any>(endpoint);
 };
 
+export const createCoupon: any = async (data: any) => {
+  const endpoint = '/coupons/list/';
+  return axios.post(endpoint, data);
+};
+
 export const updateCoupon: any = async (data: any) => {
-  const endpoint = `/coupons/retrive/${data.id}/`;
+  const endpoint = `/coupons/retrive/${data.id}`;
   return axios.patch(endpoint, data);
+};
+
+export const deleteCoupon: any = async (data: any) => {
+  const endpoint = `/coupons/retrive/${data.id}`;
+  return axios.delete(endpoint);
 };
 
 export const getStaffUsers: any = async (data: any) => {
