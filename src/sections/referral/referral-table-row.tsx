@@ -58,9 +58,7 @@ export default function ReferralTableRow({
   return (
     <>
       <TableRow hover selected={selected}>
-        <TableCell padding="checkbox">
-          <Checkbox checked={selected} onClick={onSelectRow} />
-        </TableCell>
+        <TableCell sx={{ alignContent: 'center' }}>#</TableCell>
         <TableCell sx={{ whiteSpace: 'nowrap' }}>
           <ListItemText
             primary={full_name}
