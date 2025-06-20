@@ -87,7 +87,8 @@ class ReferralSerializer(serializers.ModelSerializer):
         read_only_fields = fields # Make all fields read-only for list/retrieve
 
     def get_referral_link(self, obj):
-        base_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
+        # todo:// change url
+        base_url = getattr(settings, 'FRONTEND_URL', 'https://stayverz.divergenttechbd.com')
         registration_path = getattr(settings, 'FRONTEND_REGISTER_PATH', '/register')
         # Append referral type to the link to help frontend and registration logic
         return f"{base_url}{registration_path}?ref={obj.referral_code}&ref_type={obj.referral_type}"
