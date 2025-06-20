@@ -85,7 +85,9 @@ class MyReferralsListAPIView(generics.ListAPIView):
     @swagger_auto_schema(
         operation_description="Lists all referrals (both Host-to-Host and Guest-to-Guest) initiated by the logged-in user.")
     def get_queryset(self):
-        return Referral.objects.filter(referrer=self.request.user).select_related('referred_user').order_by(
+        return Referral.objects.filter(referrer=self.request.user).exclude(
+            status=ReferralStatus.PENDING
+        ).select_related('referred_user').order_by(
             '-created_at')
 
 
