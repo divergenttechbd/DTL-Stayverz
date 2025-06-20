@@ -29,6 +29,10 @@ class ListingSerializer(DynamicFieldsModelSerializer):
     instant_booking_allowed = BooleanField(required=False)
     require_guest_good_track_record = BooleanField(required=False)
 
+    category_name = serializers.SerializerMethodField()
+
+
+
     enable_length_of_stay_discount = serializers.BooleanField(required=False)
     length_of_stay_discounts = serializers.JSONField(required=False)
 
@@ -42,6 +46,9 @@ class ListingSerializer(DynamicFieldsModelSerializer):
             if obj.category
             else None
         )
+
+    def get_category_name(self, obj):
+        return obj.category.name if obj.category else None
 
     def get_owner(self, obj):
         return UserSerializer(
