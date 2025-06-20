@@ -271,11 +271,11 @@ class PublicUserLoginAPIView(views.APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # if not user.check_password(raw_password=request.data["password"]):
-        #     return Response(
-        #         {"message": "invalid credentials"},
-        #         status=status.HTTP_400_BAD_REQUEST,
-        #     )
+        if not user.check_password(raw_password=request.data["password"]):
+            return Response(
+                {"message": "invalid credentials"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         access_token, refresh_token = create_tokens(user=user)
         data = {
             "access_token": access_token,
