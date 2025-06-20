@@ -421,6 +421,7 @@ class CoHostedListingDetailSerializer(serializers.ModelSerializer):
     cover_photo = serializers.URLField(source='listing.cover_photo', read_only=True, allow_null=True)
     price = serializers.FloatField(source='listing.price', read_only=True) # Per-night price from Listing
 
+    unique_id = serializers.UUIDField(source='listing.unique_id', read_only=True)
 
     primary_host_id = serializers.IntegerField(source='primary_host.id', read_only=True)
     primary_host_name = serializers.CharField(source='primary_host.get_full_name', read_only=True)
@@ -431,6 +432,7 @@ class CoHostedListingDetailSerializer(serializers.ModelSerializer):
         model = ListingCoHost
         fields = [
             'listing_id',
+            'unique_id',
             'title',
             'address',
             'cover_photo',
